@@ -125,9 +125,16 @@ app.post("/webhook", async (req, res) => {
 
     // 7. If escalation needed, notify agent and mark conversation
     if (escalate) {
-      const fullHistory = await db.getChatHistory(clientPhone);
-      await notifyAgent(clientPhone, client.name, fullHistory);
-      await db.markEscalated(clientPhone);
+      try {
+        const fullHistory = await db.getChatHistory(clientPhone);
+        await notifyAgent(clientPhone, client.name, fullHistory);
+        await db.markEscalated(clientPhone);
+        console.log("Agent notified for:", clientPhone);
+      } catch (agentErr) {
+        // Log the error but don't crash — client still gets their reply
+        console.error("Agent notification failed (will retry manually):", agentErr.message);
+        await db.markEscalated(clientPhone); // still mark escalated in DB
+      }
     }
 
     // 8. Reply to client
