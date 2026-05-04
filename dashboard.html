@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bodla Bot Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+    header { background: #1a6b3c; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header p { font-size: 13px; opacity: 0.8; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 20px 24px 0; }
+    .stat { background: white; border-radius: 10px; padding: 16px; border: 0.5px solid #e0e0e0; }
+    .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .stat-value { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+    .stat-value.green { color: #1a6b3c; }
+    .stat-value.orange { color: #d97706; }
+    .main { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 20px 24px; }
+    .client-list { background: white; border-radius: 10px; border: 0.5px solid #e0e0e0; overflow: hidden; }
+    .client-list h2 { font-size: 13px; font-weight: 600; color: #666; padding: 12px 16px; border-bottom: 0.5px solid #e0e0e0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .client-item { padding: 12px 16px; border-bottom: 0.5px solid #f0f0f0; cursor: pointer; transition: background 0.15s; }
+    .client-item:hover { background: #f9f9f9; }
+    .client-item.active { background: #e8f5ee; border-left: 3px solid #1a6b3c; }
+    .client-name { font-size: 14px; font-weight: 500; }
+    .client-phone { font-size: 12px; color: #888; margin-top: 2px; }
+    .client-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .client-time { font-size: 11px; color: #aaa; }
+    .badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
+    .badge.escalated { background: #fef3c7; color: #d97706; }
+    .badge.active { background: #d1fae5; color: #065f46; }
+    .chat-panel { background: white; border-radius: 10px; border: 0.5px solid #e0e0e0; display: flex; flex-direction: column; min-height: 500px; }
+    .chat-header { padding: 14px 20px; border-bottom: 0.5px solid #e0e0e0; }
+    .chat-header h3 { font-size: 15px; font-weight: 600; }
+    .chat-header p { font-size: 12px; color: #888; margin-top: 2px; }
+    .chat-messages { flex: 1; padding: 20px; overflow-y: auto; max-height: 520px; display: flex; flex-direction: column; gap: 10px; }
+    .message { max-width: 75%; }
+    .message.user { align-self: flex-end; }
+    .message.assistant { align-self: flex-start; }
+    .message-bubble { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+    .message.user .message-bubble { background: #dcf8c6; color: #1a1a1a; border-bottom-right-radius: 4px; }
+    .message.assistant .message-bubble { background: #f0f0f0; color: #1a1a1a; border-bottom-left-radius: 4px; }
+    .message-time { font-size: 11px; color: #aaa; margin-top: 3px; text-align: right; }
+    .message.assistant .message-time { text-align: left; }
+    .empty-state { display: flex; align-items: center; justify-content: center; flex: 1; color: #aaa; font-size: 14px; }
+    .refresh-btn { background: #1a6b3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-left: auto; }
+    @media (max-width: 700px) { .main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Bodla Bot Dashboard</h1>
+      <p>WhatsApp AI Chatbot — Live Chat Monitor</p>
+    </div>
+    <button class="refresh-btn" onclick="loadData()">Refresh</button>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Clients</div><div class="stat-value" id="stat-total">—</div></div>
+    <div class="stat"><div class="stat-label">Escalated to Agent</div><div class="stat-value orange" id="stat-escalated">—</div></div>
+    <div class="stat"><div class="stat-label">Total Messages</div><div class="stat-value green" id="stat-messages">—</div></div>
+    <div class="stat"><div class="stat-label">Active Today</div><div class="stat-value" id="stat-today">—</div></div>
+  </div>
+
+  <div class="main">
+    <div class="client-list">
+      <h2>Clients</h2>
+      <div id="client-list-body"></div>
+    </div>
+    <div class="chat-panel">
+      <div class="chat-header">
+        <h3 id="chat-title">Select a client</h3>
+        <p id="chat-subtitle">Click any client on the left to view their conversation</p>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="empty-state">No client selected</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allData = [];
+
+    function timeAgo(dateStr) {
+      const d = new Date(dateStr + (dateStr.includes('Z') ? '' : 'Z'));
+      const diff = Math.floor((Date.now() - d) / 1000);
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+      return Math.floor(diff/86400) + 'd ago';
+    }
+
+    function formatTime(dateStr) {
+      const d = new Date(dateStr + (dateStr.includes('Z') ? '' : 'Z'));
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function renderClients(data) {
+      const list = document.getElementById('client-list-body');
+      list.innerHTML = data.map((c, i) => `
+        <div class="client-item" id="client-${i}" onclick="selectClient(${i})">
+          <div class="client-name">${c.name || 'Unknown Client'}</div>
+          <div class="client-phone">${c.phone}</div>
+          <div class="client-meta">
+            <span class="client-time">${timeAgo(c.last_seen)}</span>
+            <span class="badge ${c.escalated ? 'escalated' : 'active'}">${c.escalated ? 'Agent notified' : 'Active'}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectClient(index) {
+      document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
+      document.getElementById('client-' + index).classList.add('active');
+
+      const c = allData[index];
+      document.getElementById('chat-title').textContent = c.name || c.phone;
+      document.getElementById('chat-subtitle').textContent = `${c.phone} · ${c.messages.length} messages · ${c.escalated ? 'Escalated to agent' : 'In AI chat'}`;
+
+      const container = document.getElementById('chat-messages');
+      if (!c.messages.length) {
+        container.innerHTML = '<div class="empty-state">No messages yet</div>';
+        return;
+      }
+      container.innerHTML = c.messages.map(m => `
+        <div class="message ${m.role}">
+          <div class="message-bubble">${m.content.replace(/\n/g,'<br>')}</div>
+          <div class="message-time">${formatTime(m.created_at)}</div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function loadData() {
+      const res = await fetch('/api/clients');
+      allData = await res.json();
+
+      const today = new Date().toDateString();
+      const todayCount = allData.filter(c => new Date(c.last_seen).toDateString() === today).length;
+      const totalMsgs = allData.reduce((sum, c) => sum + c.messages.length, 0);
+
+      document.getElementById('stat-total').textContent = allData.length;
+      document.getElementById('stat-escalated').textContent = allData.filter(c => c.escalated).length;
+      document.getElementById('stat-messages').textContent = totalMsgs;
+      document.getElementById('stat-today').textContent = todayCount;
+
+      renderClients(allData);
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
