@@ -5,7 +5,8 @@ const { MessagingResponse } = require("twilio").twiml;
 const twilio = require("twilio");
 const OpenAI = require("openai");
 const db = require("./database");
-const knowledge = require("./company-knowledge");
+const fs = require("fs");
+const knowledge = fs.readFileSync(path.join(__dirname, "knowledge.txt"), "utf8");
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
@@ -31,7 +32,7 @@ YOUR JOB:
 4. When the client is ready to get pricing, is serious about buying/booking, wants specific plot availability, wants to negotiate, or asks to speak with someone — tell them a sales agent will contact them shortly and set ESCALATE=true.
 
 COMPANY KNOWLEDGE:
-${JSON.stringify(knowledge, null, 2)}
+${knowledge}
 
 IMPORTANT RULES:
 - Never make up prices or plot availability — say our agent will provide exact current rates.
