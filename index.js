@@ -51,27 +51,55 @@ function cleanReply(text) {
   return text.replace("[ESCALATE]", "").trim();
 }
 
-// ─── Send message to sales agent ────────────────────────────────────────────
+// ─── Send message to sales agent (handles long chats by splitting) ───────────
 async function notifyAgent(clientPhone, clientName, chatHistory) {
   const agentPhone = process.env.SALES_AGENT_WHATSAPP;
   const from = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 
-  const historyText = chatHistory
-    .map((m) => `${m.role === "user" ? clientName || "Client" : "Bot"}: ${m.content}`)
-    .join("\n");
-
-  const message =
-    `🔔 *New Lead — Bodla Bot*\n\n` +
+  const header =
+    `🔔 *New Lead — Bodla Bot*\n` +
     `*Client:* ${clientName || "Unknown"}\n` +
-    `*Phone:* ${clientPhone}\n\n` +
-    `*Chat Log:*\n${historyText}\n\n` +
-    `Please follow up with this client.`;
+    `*Phone:* ${clientPhone}\n` +
+    `*Agent Action Required* — Please follow up.`;
 
+  // Send header first
   await twilioClient.messages.create({
     from,
     to: `whatsapp:${agentPhone}`,
-    body: message,
+    body: header,
   });
+
+  // Build chat lines and chunk them under 1400 chars each
+  const lines = chatHistory.map(
+    (m) => `${m.role === "user" ? clientName || "Client" : "Bot"}: ${m.content}`
+  );
+
+  const LIMIT = 1400;
+  let chunk = "*Chat Log:*\n";
+  let chunkNum = 1;
+
+  for (const line of lines) {
+    if ((chunk + "\n" + line).length > LIMIT) {
+      await twilioClient.messages.create({
+        from,
+        to: `whatsapp:${agentPhone}`,
+        body: chunk,
+      });
+      chunkNum++;
+      chunk = `*Chat Log (cont.):*\n${line}`;
+    } else {
+      chunk += "\n" + line;
+    }
+  }
+
+  // Send remaining chunk
+  if (chunk.trim()) {
+    await twilioClient.messages.create({
+      from,
+      to: `whatsapp:${agentPhone}`,
+      body: chunk,
+    });
+  }
 }
 
 // ─── Main webhook ────────────────────────────────────────────────────────────
