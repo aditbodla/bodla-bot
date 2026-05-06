@@ -1,11 +1,9 @@
-const { createClient } = require("@supabase/supabase-js");
+const { createClient: createSupabaseClient } = require("@supabase/supabase-js");
 
-const supabase = createClient(
+const supabase = createSupabaseClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
-
-// ─── Client functions ─────────────────────────────────────────────────────────
 
 async function getClient(phone) {
   const { data } = await supabase
@@ -46,8 +44,6 @@ async function getAllClients() {
     .order("last_seen", { ascending: false });
   return data || [];
 }
-
-// ─── Message functions ────────────────────────────────────────────────────────
 
 async function saveMessage(phone, role, content) {
   await supabase.from("messages").insert({ phone, role, content });
