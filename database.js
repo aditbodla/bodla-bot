@@ -1,64 +1,69 @@
-const Database = require("better-sqlite3");
-const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
 
-const db = new Database(path.join(__dirname, "bodla-bot.db"));
-
-// ─── Initialize tables ────────────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS clients (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT UNIQUE NOT NULL,
-    name TEXT,
-    escalated INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now')),
-    last_seen TEXT DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-`);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 // ─── Client functions ─────────────────────────────────────────────────────────
-function getClient(phone) {
-  return db.prepare("SELECT * FROM clients WHERE phone = ?").get(phone) || null;
+
+async function getClient(phone) {
+  const { data } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("phone", phone)
+    .single();
+  return data || null;
 }
 
-function createClient(phone, name) {
-  db.prepare("INSERT OR IGNORE INTO clients (phone, name) VALUES (?, ?)").run(phone, name || null);
-  db.prepare("UPDATE clients SET last_seen = datetime('now') WHERE phone = ?").run(phone);
-  return getClient(phone);
+async function createClient(phone, name) {
+  const { data } = await supabase
+    .from("clients")
+    .upsert(
+      { phone, name: name || null, last_seen: new Date().toISOString() },
+      { onConflict: "phone" }
+    )
+    .select()
+    .single();
+  return data;
 }
 
-function updateClientName(phone, name) {
-  db.prepare("UPDATE clients SET name = ? WHERE phone = ?").run(name, phone);
+async function updateClientName(phone, name) {
+  await supabase.from("clients").update({ name }).eq("phone", phone);
 }
 
-function markEscalated(phone) {
-  db.prepare("UPDATE clients SET escalated = 1 WHERE phone = ?").run(phone);
+async function markEscalated(phone) {
+  await supabase
+    .from("clients")
+    .update({ escalated: true, last_seen: new Date().toISOString() })
+    .eq("phone", phone);
 }
 
-function getAllClients() {
-  return db.prepare("SELECT * FROM clients ORDER BY last_seen DESC").all();
+async function getAllClients() {
+  const { data } = await supabase
+    .from("clients")
+    .select("*")
+    .order("last_seen", { ascending: false });
+  return data || [];
 }
 
 // ─── Message functions ────────────────────────────────────────────────────────
-function saveMessage(phone, role, content) {
-  db.prepare(
-    "INSERT INTO messages (phone, role, content) VALUES (?, ?, ?)"
-  ).run(phone, role, content);
 
-  db.prepare("UPDATE clients SET last_seen = datetime('now') WHERE phone = ?").run(phone);
+async function saveMessage(phone, role, content) {
+  await supabase.from("messages").insert({ phone, role, content });
+  await supabase
+    .from("clients")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("phone", phone);
 }
 
-function getChatHistory(phone) {
-  return db
-    .prepare("SELECT role, content, created_at FROM messages WHERE phone = ? ORDER BY created_at ASC")
-    .all(phone);
+async function getChatHistory(phone) {
+  const { data } = await supabase
+    .from("messages")
+    .select("role, content, created_at")
+    .eq("phone", phone)
+    .order("created_at", { ascending: true });
+  return data || [];
 }
 
 module.exports = {
