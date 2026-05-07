@@ -184,12 +184,19 @@ app.get("/dashboard", (req, res) => {
 
 // ─── Dashboard data API ───────────────────────────────────────────────────────
 app.get("/api/clients", async (req, res) => {
-  const clients = db.getAllClients();
-  const data = clients.map((c) => ({
-    ...c,
-    messages: db.getChatHistory(c.phone),
-  }));
-  res.json(data);
+  try {
+    const clients = await db.getAllClients();
+    const data = await Promise.all(
+      clients.map(async (c) => ({
+        ...c,
+        messages: await db.getChatHistory(c.phone),
+      }))
+    );
+    res.json(data);
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).json([]);
+  }
 });
 
 app.get("/", (req, res) => res.send("Bodla Bot is running."));
