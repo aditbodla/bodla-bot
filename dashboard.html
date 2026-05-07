@@ -83,7 +83,9 @@
     let allData = [];
 
     function timeAgo(dateStr) {
-      const d = new Date(dateStr + (dateStr.includes('Z') ? '' : 'Z'));
+      if (!dateStr) return 'unknown';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return 'unknown';
       const diff = Math.floor((Date.now() - d) / 1000);
       if (diff < 60) return 'just now';
       if (diff < 3600) return Math.floor(diff/60) + 'm ago';
@@ -92,7 +94,9 @@
     }
 
     function formatTime(dateStr) {
-      const d = new Date(dateStr + (dateStr.includes('Z') ? '' : 'Z'));
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return '';
       return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     }
 
