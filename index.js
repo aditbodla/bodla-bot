@@ -127,16 +127,30 @@ app.post("/webhook", async (req, res) => {
     // 2. Save incoming message
     await db.saveMessage(clientPhone, "user", incomingMsg);
 
-    // 3. Load full chat history for context
+    // 3. If already escalated and no agent assigned yet — send holding reply
+    if (client.escalated && !client.assigned_to) {
+      const holdingReplies = [
+        "Jazakallah for your patience! Hamara sales agent aap se jald contact karega. Agar koi aur sawaal hai to zaroor poochein! 😊",
+        "Shukriya! Hamara agent aap ki request dekh raha hai aur jald hi aap se rabta karega. Thoda sa intezaar farmayein! 🙏",
+        "Aapki request hamare team tak pohanch gayi hai. Sales agent jald hi aap se contact karega. Jazakallah! ✨",
+      ];
+      const reply = holdingReplies[Math.floor(Math.random() * holdingReplies.length)];
+      await db.saveMessage(clientPhone, "assistant", reply);
+      twiml.message(reply);
+      res.type("text/xml");
+      return res.send(twiml.toString());
+    }
+
+    // 4. Load full chat history for context
     const history = await db.getChatHistory(clientPhone);
 
-    // 4. Build messages array for OpenAI
+    // 5. Build messages array for OpenAI
     const messages = [
       { role: "system", content: buildSystemPrompt() },
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    // 5. Call OpenAI
+    // 6. Call OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages,
@@ -148,10 +162,10 @@ app.post("/webhook", async (req, res) => {
     const escalate = shouldEscalate(rawReply);
     const botReply = cleanReply(rawReply);
 
-    // 6. Save bot reply
+    // 7. Save bot reply
     await db.saveMessage(clientPhone, "assistant", botReply);
 
-    // 7. If escalation needed, notify agent and mark conversation
+    // 8. If escalation needed, notify agent and mark conversation
     if (escalate) {
       try {
         const fullHistory = await db.getChatHistory(clientPhone);
@@ -159,13 +173,12 @@ app.post("/webhook", async (req, res) => {
         await db.markEscalated(clientPhone);
         console.log("Agent notified for:", clientPhone);
       } catch (agentErr) {
-        // Log the error but don't crash — client still gets their reply
         console.error("Agent notification failed (will retry manually):", agentErr.message);
-        await db.markEscalated(clientPhone); // still mark escalated in DB
+        await db.markEscalated(clientPhone);
       }
     }
 
-    // 8. Reply to client
+    // 9. Reply to client
     twiml.message(botReply);
     res.type("text/xml");
     res.send(twiml.toString());
