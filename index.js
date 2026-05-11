@@ -128,6 +128,7 @@ app.post("/webhook", async (req, res) => {
     await db.saveMessage(clientPhone, "user", incomingMsg);
 
     // 3. If already escalated and no agent assigned yet — send holding reply
+    console.log("Client status:", { phone: clientPhone, escalated: client?.escalated, assigned_to: client?.assigned_to });
     if (client.escalated && !client.assigned_to) {
       const holdingReplies = [
         "Jazakallah for your patience! Hamara sales agent aap se jald contact karega. Agar koi aur sawaal hai to zaroor poochein! 😊",
