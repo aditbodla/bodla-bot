@@ -235,3 +235,167 @@ app.get("/", (req, res) => res.send("Bodla Bot is running."));
 // ─── Start server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Bodla Bot running on port ${PORT}`));
+
+// ─── Load new modules ─────────────────────────────────────────────────────────
+const auth = require("./auth");
+const assignments = require("./assignments");
+
+// ─── AUTH ROUTES ──────────────────────────────────────────────────────────────
+app.post("/api/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    const result = await auth.login(username, password);
+    res.json(result);
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+app.get("/api/me", auth.requireAuth(), (req, res) => {
+  res.json(req.user);
+});
+
+// ─── ADMIN — USER MANAGEMENT ──────────────────────────────────────────────────
+app.get("/api/users", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { role, team_id } = req.query;
+    const users = await auth.getUsers(role || null, team_id || null);
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/users", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { username, password, full_name, role, team_id } = req.body;
+    const user = await auth.createUser(username, password, full_name, role, team_id || null);
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── ADMIN — TEAM MANAGEMENT ──────────────────────────────────────────────────
+app.get("/api/teams", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const teams = await auth.getTeams();
+    res.json(teams);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/teams", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { name, manager_id } = req.body;
+    const team = await auth.createTeam(name, manager_id || null);
+    res.json(team);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── LEADS TABLE ─────────────────────────────────────────────────────────────
+app.get("/api/leads", auth.requireAuth(["admin", "manager", "agent"]), async (req, res) => {
+  try {
+    const leads = await assignments.getLeads(req.user);
+    res.json(leads);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── ASSIGN CLIENT TO AGENT ───────────────────────────────────────────────────
+app.post("/api/leads/assign", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { client_phone, agent_id } = req.body;
+    const result = await assignments.assignClient(client_phone, agent_id, req.user.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── TRANSFER CLIENT ──────────────────────────────────────────────────────────
+app.post("/api/leads/transfer", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { client_phone, to_agent_id, reason } = req.body;
+    const result = await assignments.transferClient(client_phone, to_agent_id, req.user.id, reason || null);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── AGENT — REPLY TO CLIENT VIA WHATSAPP ─────────────────────────────────────
+app.post("/api/agent/reply", auth.requireAuth(["admin", "manager", "agent"]), async (req, res) => {
+  try {
+    const { client_phone, message } = req.body;
+    if (!client_phone || !message) return res.status(400).json({ error: "client_phone and message required" });
+
+    await twilioClient.messages.create({
+      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+      to: `whatsapp:${client_phone}`,
+      body: message,
+    });
+
+    await db.saveMessage(client_phone, "agent", message);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PLOT RATES ───────────────────────────────────────────────────────────────
+app.get("/api/plot-rates", auth.requireAuth(), async (req, res) => {
+  try {
+    const rates = await assignments.getPlotRates();
+    res.json(rates);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/plot-rates", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { sector, plot_type, size, min_price, max_price, notes } = req.body;
+    await assignments.upsertPlotRate(sector, plot_type, size, min_price, max_price, notes, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── BROCHURES ────────────────────────────────────────────────────────────────
+app.get("/api/brochures", auth.requireAuth(), async (req, res) => {
+  try {
+    const brochures = await assignments.getBrochures();
+    res.json(brochures);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+app.get("/api/settings", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { data } = await require("@supabase/supabase-js")
+      .createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
+      .from("settings").select("*");
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/settings", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { key, value } = req.body;
+    await assignments.updateSetting(key, value, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
