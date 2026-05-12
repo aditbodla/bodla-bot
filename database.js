@@ -34,10 +34,14 @@ async function updateClientName(phone, name) {
   await supabase.from("clients").update({ name }).eq("phone", phone);
 }
 
-async function markEscalated(phone) {
+async function markEscalated(phone, agentRequested = false) {
   await supabase
     .from("clients")
-    .update({ escalated: true, last_seen: new Date().toISOString() })
+    .update({ 
+      escalated: true, 
+      agent_requested: agentRequested,
+      last_seen: new Date().toISOString() 
+    })
     .eq("phone", phone);
 }
 

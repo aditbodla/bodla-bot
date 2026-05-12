@@ -129,7 +129,8 @@ app.post("/webhook", async (req, res) => {
 
     // 3. If already escalated and no agent assigned yet — send holding reply
     console.log("Client status:", { phone: clientPhone, escalated: client?.escalated, assigned_to: client?.assigned_to });
-    if (client.escalated && !client.assigned_to) {
+    // Only hold if client explicitly requested agent contact (not just AI-detected escalation)
+    if (client.escalated && client.agent_requested && !client.assigned_to) {
       const holdingReplies = [
         "Jazakallah for your patience! Hamara sales agent aap se jald contact karega. Agar koi aur sawaal hai to zaroor poochein! 😊",
         "Shukriya! Hamara agent aap ki request dekh raha hai aur jald hi aap se rabta karega. Thoda sa intezaar farmayein! 🙏",
@@ -171,11 +172,11 @@ app.post("/webhook", async (req, res) => {
       try {
         const fullHistory = await db.getChatHistory(clientPhone);
         await notifyAgent(clientPhone, client.name, fullHistory);
-        await db.markEscalated(clientPhone);
+        await db.markEscalated(clientPhone, true);
         console.log("Agent notified for:", clientPhone);
       } catch (agentErr) {
         console.error("Agent notification failed (will retry manually):", agentErr.message);
-        await db.markEscalated(clientPhone);
+        await db.markEscalated(clientPhone, true);
       }
     }
 
