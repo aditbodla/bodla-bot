@@ -404,3 +404,37 @@ app.post("/api/settings", auth.requireAuth(["admin"]), async (req, res) => {
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
+
+// ─── Edit User ────────────────────────────────────────────────────────────────
+app.put("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { full_name, username, whatsapp_phone, role, team_id, password } = req.body;
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const update = { full_name, username, whatsapp_phone, role, team_id: team_id || null };
+    if (password) {
+      const bcrypt = require("bcrypt");
+      update.password_hash = await bcrypt.hash(password, 10);
+    }
+    const { error } = await supa.from("users").update(update).eq("id", req.params.id);
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── Delete User ──────────────────────────────────────────────────────────────
+app.delete("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { error } = await supa.from("users").update({ is_active: false }).eq("id", req.params.id);
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});

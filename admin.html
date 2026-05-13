@@ -334,8 +334,8 @@ tr:hover td{background:var(--gray-50);}
           <div class="card-header"><span class="card-title">All Users</span><button class="btn btn-primary btn-sm" onclick="openModal('modal-add-user')">+ Add User</button></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>Full Name</th><th>Username</th><th>Role</th><th>Team</th><th>Status</th><th>Last Login</th></tr></thead>
-              <tbody id="users-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+              <thead><tr><th>#</th><th>Full Name</th><th>Username</th><th>WhatsApp</th><th>Role</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="users-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -411,10 +411,11 @@ tr:hover td{background:var(--gray-50);}
       <div class="field full"><label>Full Name</label><input type="text" id="new-fullname" placeholder="e.g. Ahmed Khan"/></div>
       <div class="field"><label>Username</label><input type="text" id="new-username" placeholder="e.g. ahmed.khan"/></div>
       <div class="field"><label>Password</label><input type="password" id="new-password" placeholder="min 6 characters"/></div>
+      <div class="field"><label>WhatsApp Number</label><input type="text" id="new-whatsapp" placeholder="+923001234567"/></div>
       <div class="field"><label>Role</label>
         <select id="new-role">
           <option value="agent">Agent</option>
-          <option value="manager">Manager</option>
+          <option value="manager">Manager (can also handle chats)</option>
           <option value="admin">Admin</option>
         </select>
       </div>
@@ -443,6 +444,35 @@ tr:hover td{background:var(--gray-50);}
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-assign')">Cancel</button>
       <button class="btn btn-primary" onclick="doAssign()">Assign / Transfer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay hidden" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-title">Edit User</div>
+    <input type="hidden" id="edit-user-id"/>
+    <div class="form-grid">
+      <div class="field full"><label>Full Name</label><input type="text" id="edit-fullname"/></div>
+      <div class="field"><label>Username</label><input type="text" id="edit-username"/></div>
+      <div class="field"><label>New Password</label><input type="password" id="edit-password" placeholder="Leave blank to keep current"/></div>
+      <div class="field full"><label>WhatsApp Number</label><input type="text" id="edit-whatsapp" placeholder="+923001234567"/></div>
+      <div class="field"><label>Role</label>
+        <select id="edit-role">
+          <option value="agent">Agent</option>
+          <option value="manager">Manager (can also handle chats)</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field"><label>Team</label>
+        <select id="edit-team"><option value="">No team</option></select>
+      </div>
+    </div>
+    <div id="edit-user-error" class="login-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -616,15 +646,13 @@ async function doAssign() {
   const errEl = document.getElementById('assign-error');
   if (!agentId) { errEl.textContent='Please select an agent'; errEl.style.display='block'; return; }
 
-  const res = await api('/api/leads/transfer', 'POST', {client_phone:phone, to_agent_id:agentId, reason});
-  if (res?.success) {
-    closeModal('modal-assign');
-    loadLeads();
-  } else {
-    // Try assign if not yet assigned
-    const res2 = await api('/api/leads/assign', 'POST', {client_phone:phone, agent_id:agentId});
-    if (res2?.success) { closeModal('modal-assign'); loadLeads(); }
-    else { errEl.textContent = res2?.error || 'Failed'; errEl.style.display='block'; }
+  // Always try assign first, if locked then transfer
+  const res = await api('/api/leads/assign', 'POST', {client_phone:phone, agent_id:agentId});
+  if (res?.success) { closeModal('modal-assign'); loadLeads(); loadDashboard(); }
+  else {
+    const res2 = await api('/api/leads/transfer', 'POST', {client_phone:phone, to_agent_id:agentId, reason});
+    if (res2?.success) { closeModal('modal-assign'); loadLeads(); loadDashboard(); }
+    else { errEl.textContent = res2?.error || res?.error || 'Failed'; errEl.style.display='block'; }
   }
 }
 
@@ -718,18 +746,60 @@ async function createTeam() {
 async function loadUsers() {
   const users = await api('/api/users');
   const tbody = document.getElementById('users-table');
-  if (!users?.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty"><p>No users yet</p></div></td></tr>'; return; }
+  if (!users?.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty"><p>No users yet</p></div></td></tr>'; return; }
   tbody.innerHTML = users.map((u,i)=>`
     <tr>
       <td>${i+1}</td>
       <td class="td-name">${u.full_name}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;">${u.username}</td>
+      <td style="font-size:12px;color:var(--gray-500);">${u.whatsapp_phone||'—'}</td>
       <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='manager'?'badge-blue':'badge-gray'}">${u.role}</span></td>
       <td>—</td>
       <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'Active':'Inactive'}</span></td>
-      <td style="font-size:12px;color:var(--gray-500);">${u.last_login?timeAgo(u.last_login):'Never'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="openEditUser('${u.id}','${u.full_name.replace(/'/g,"\'")}','${u.username}','${u.whatsapp_phone||''}','${u.role}','${u.team_id||''}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}','${u.full_name.replace(/'/g,"\'")}')">Delete</button>
+      </td>
     </tr>
   `).join('');
+}
+
+function openEditUser(id, fullName, username, whatsapp, role, teamId) {
+  document.getElementById('edit-user-id').value = id;
+  document.getElementById('edit-fullname').value = fullName;
+  document.getElementById('edit-username').value = username;
+  document.getElementById('edit-whatsapp').value = whatsapp;
+  document.getElementById('edit-role').value = role;
+  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-user-error').style.display='none';
+  loadTeamsForSelect('edit-team').then(()=>{
+    document.getElementById('edit-team').value = teamId || '';
+  });
+  openModal('modal-edit-user');
+}
+
+async function saveEditUser() {
+  const id = document.getElementById('edit-user-id').value;
+  const full_name = document.getElementById('edit-fullname').value.trim();
+  const username = document.getElementById('edit-username').value.trim();
+  const whatsapp_phone = document.getElementById('edit-whatsapp').value.trim();
+  const role = document.getElementById('edit-role').value;
+  const team_id = document.getElementById('edit-team').value;
+  const password = document.getElementById('edit-password').value;
+  const errEl = document.getElementById('edit-user-error');
+  errEl.style.display='none';
+  const body = {full_name, username, whatsapp_phone, role, team_id: team_id||null};
+  if (password) body.password = password;
+  const res = await api(`/api/users/${id}`, 'PUT', body);
+  if (res?.success) { closeModal('modal-edit-user'); loadUsers(); }
+  else { errEl.textContent=res?.error||'Failed'; errEl.style.display='block'; }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const res = await api(`/api/users/${id}`, 'DELETE');
+  if (res?.success) loadUsers();
+  else alert(res?.error||'Failed to delete');
 }
 
 async function loadTeamsForSelect(selectId) {
@@ -743,12 +813,13 @@ async function createUser() {
   const full_name = document.getElementById('new-fullname').value.trim();
   const username = document.getElementById('new-username').value.trim();
   const password = document.getElementById('new-password').value;
+  const whatsapp_phone = document.getElementById('new-whatsapp').value.trim();
   const role = document.getElementById('new-role').value;
   const team_id = document.getElementById('new-team').value;
   const errEl = document.getElementById('add-user-error');
   errEl.style.display='none';
   if (!full_name||!username||!password) { errEl.textContent='All fields required'; errEl.style.display='block'; return; }
-  const res = await api('/api/users','POST',{full_name,username,password,role,team_id:team_id||null});
+  const res = await api('/api/users','POST',{full_name,username,password,whatsapp_phone,role,team_id:team_id||null});
   if (res?.id) { closeModal('modal-add-user'); loadUsers(); }
   else { errEl.textContent=res?.error||'Failed'; errEl.style.display='block'; }
 }
