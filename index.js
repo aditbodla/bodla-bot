@@ -399,3 +399,8 @@ app.post("/api/settings", auth.requireAuth(["admin"]), async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bodla Bot — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#1a6b3c;--green-light:#22894e;--green-pale:#e8f5ee;--green-mid:#d1fae5;
+  --amber:#d97706;--amber-pale:#fef3c7;
+  --blue:#1d4ed8;--blue-pale:#dbeafe;
+  --red:#dc2626;--red-pale:#fee2e2;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --white:#ffffff;--sidebar:220px;--header:56px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-900);min-height:100vh;display:flex;}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--gray-900);display:flex;align-items:center;justify-content:center;z-index:1000;}
+#login-screen.hidden{display:none;}
+.login-box{background:var(--white);border-radius:16px;padding:40px;width:380px;box-shadow:0 25px 50px rgba(0,0,0,0.3);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+.login-logo-icon{width:40px;height:40px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.login-logo-icon svg{width:22px;height:22px;fill:white;}
+.login-logo h1{font-size:20px;font-weight:700;color:var(--gray-900);}
+.login-logo p{font-size:12px;color:var(--gray-500);}
+.login-box h2{font-size:22px;font-weight:600;margin-bottom:4px;}
+.login-box p{font-size:13px;color:var(--gray-500);margin-bottom:24px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;background:var(--white);color:var(--gray-900);transition:border-color 0.15s;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--green);}
+.field textarea{resize:vertical;min-height:80px;}
+.btn{padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.btn-primary{background:var(--green);color:white;}
+.btn-primary:hover{background:var(--green-light);}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700);}
+.btn-secondary:hover{background:var(--gray-200);}
+.btn-danger{background:var(--red-pale);color:var(--red);}
+.btn-danger:hover{background:#fecaca;}
+.btn-amber{background:var(--amber-pale);color:var(--amber);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-full{width:100%;padding:12px;}
+.login-error{background:var(--red-pale);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+
+/* ── LAYOUT ── */
+#app{display:flex;width:100%;min-height:100vh;}
+#app.hidden{display:none;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);background:var(--gray-900);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.sidebar-logo{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;}
+.sidebar-logo-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sidebar-logo-icon svg{width:18px;height:18px;fill:white;}
+.sidebar-logo-text{font-size:14px;font-weight:700;color:white;}
+.sidebar-logo-sub{font-size:10px;color:var(--gray-400);}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto;}
+.nav-section{font-size:10px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:1px;padding:8px 10px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--gray-400);font-size:13px;font-weight:500;margin-bottom:2px;transition:all 0.15s;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:white;}
+.nav-item.active{background:var(--green);color:white;}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--amber);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;}
+.sidebar-bottom{padding:12px 10px;border-top:1px solid rgba(255,255,255,0.08);}
+.user-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;}
+.user-avatar{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+.user-name{font-size:13px;font-weight:600;color:white;}
+.user-role{font-size:11px;color:var(--gray-400);text-transform:capitalize;}
+.logout-btn{width:100%;margin-top:8px;background:rgba(255,255,255,0.06);color:var(--gray-400);border:none;padding:8px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+.logout-btn:hover{background:rgba(255,255,255,0.1);color:white;}
+
+/* ── MAIN CONTENT ── */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{height:var(--header);background:white;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:16px;font-weight:700;color:var(--gray-900);}
+.topbar-sub{font-size:12px;color:var(--gray-500);margin-left:4px;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.content{padding:24px;flex:1;}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{background:white;border-radius:12px;padding:18px 20px;border:1px solid var(--gray-200);}
+.stat-label{font-size:12px;color:var(--gray-500);font-weight:500;margin-bottom:6px;}
+.stat-value{font-size:28px;font-weight:700;color:var(--gray-900);}
+.stat-value.green{color:var(--green);}
+.stat-value.amber{color:var(--amber);}
+.stat-value.blue{color:var(--blue);}
+.stat-sub{font-size:11px;color:var(--gray-400);margin-top:4px;}
+
+/* ── CARDS ── */
+.card{background:white;border-radius:12px;border:1px solid var(--gray-200);margin-bottom:20px;}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:14px;font-weight:600;color:var(--gray-900);}
+.card-body{padding:20px;}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);}
+td{padding:12px 14px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--gray-50);}
+.td-name{font-weight:600;color:var(--gray-900);}
+.td-phone{font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500);}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-green{background:var(--green-mid);color:var(--green);}
+.badge-amber{background:var(--amber-pale);color:var(--amber);}
+.badge-blue{background:var(--blue-pale);color:var(--blue);}
+.badge-red{background:var(--red-pale);color:var(--red);}
+.badge-gray{background:var(--gray-100);color:var(--gray-600);}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(2px);}
+.modal-overlay.hidden{display:none;}
+.modal{background:white;border-radius:16px;padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:20px;color:var(--gray-900);}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+/* ── FORMS ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid .full{grid-column:1/-1;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:10px;margin-bottom:20px;width:fit-content;}
+.tab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;color:var(--gray-600);transition:all 0.15s;border:none;background:transparent;font-family:'DM Sans',sans-serif;}
+.tab.active{background:white;color:var(--gray-900);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:48px 20px;color:var(--gray-400);}
+.empty svg{width:40px;height:40px;margin:0 auto 12px;opacity:0.3;}
+.empty p{font-size:14px;}
+
+/* ── LOADING ── */
+.loading{text-align:center;padding:32px;color:var(--gray-400);font-size:14px;}
+
+/* ── ALERT ── */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;}
+.alert-success{background:var(--green-pale);color:var(--green);}
+.alert-error{background:var(--red-pale);color:var(--red);}
+
+/* ── PAGE SECTIONS ── */
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── PLOT RATES ── */
+.rates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.rate-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:16px;}
+.rate-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.rate-card-title{font-size:13px;font-weight:600;color:var(--gray-900);}
+.rate-price{font-size:16px;font-weight:700;color:var(--green);}
+.rate-range{font-size:11px;color:var(--gray-500);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);}
+  .main{margin-left:0;}
+  .form-grid{grid-template-columns:1fr;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
+      <div><div class="login-logo-text">Bodla Bot</div><div style="font-size:11px;color:var(--gray-400);">Admin Panel</div></div>
+    </div>
+    <h2>Welcome back</h2>
+    <p>Sign in to manage your team and leads</p>
+    <div class="login-error" id="login-error"></div>
+    <div class="field"><label>Username</label><input type="text" id="login-username" placeholder="admin" autocomplete="username"/></div>
+    <div class="field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app" class="hidden">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg></div>
+      <div><div class="sidebar-logo-text">Bodla Bot</div><div class="sidebar-logo-sub">Management Panel</div></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Dashboard
+      </div>
+
+      <div class="nav-section">Leads</div>
+      <div class="nav-item" onclick="showPage('leads',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Leads <span class="nav-badge" id="leads-badge">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('chats',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        All Chats
+      </div>
+
+      <div class="nav-section admin-only">Admin</div>
+      <div class="nav-item admin-only" onclick="showPage('teams',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Teams
+      </div>
+      <div class="nav-item admin-only" onclick="showPage('users',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        Users
+      </div>
+
+      <div class="nav-section">Knowledge</div>
+      <div class="nav-item" onclick="showPage('rates',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        Plot Rates
+      </div>
+      <div class="nav-item admin-only" onclick="showPage('settings',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        Settings
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div><div class="user-name" id="user-name">Admin</div><div class="user-role" id="user-role">admin</div></div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <span class="topbar-title" id="page-title">Dashboard</span>
+        <span class="topbar-sub" id="page-sub"></span>
+      </div>
+      <div class="topbar-right" id="topbar-actions"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── DASHBOARD PAGE ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Clients</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">all time</div></div>
+          <div class="stat-card"><div class="stat-label">New Leads</div><div class="stat-value amber" id="s-leads">—</div><div class="stat-sub">awaiting assignment</div></div>
+          <div class="stat-card"><div class="stat-label">Active Chats</div><div class="stat-value green" id="s-active">—</div><div class="stat-sub">with agents</div></div>
+          <div class="stat-card"><div class="stat-label">Total Messages</div><div class="stat-value blue" id="s-messages">—</div><div class="stat-sub">all conversations</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Recent Leads</span><button class="btn btn-secondary btn-sm" onclick="showPage('leads',document.querySelector('.nav-item:nth-child(5))'))">View all</button></div>
+          <div class="card-body" id="dashboard-recent"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- ── LEADS PAGE ── -->
+      <div class="page" id="page-leads">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Leads</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-sm" onclick="loadLeads()">↻ Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Client</th><th>Phone</th><th>Assigned To</th><th>Team</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead>
+              <tbody id="leads-table-body"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CHATS PAGE ── -->
+      <div class="page" id="page-chats">
+        <div style="display:grid;grid-template-columns:300px 1fr;gap:16px;height:calc(100vh - 120px);">
+          <div class="card" style="overflow:hidden;display:flex;flex-direction:column;margin:0;">
+            <div class="card-header"><span class="card-title">Clients</span></div>
+            <div style="overflow-y:auto;flex:1;" id="chat-client-list"><div class="loading">Loading...</div></div>
+          </div>
+          <div class="card" style="display:flex;flex-direction:column;margin:0;overflow:hidden;">
+            <div class="card-header" id="chat-panel-header"><span class="card-title">Select a client</span></div>
+            <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px;" id="chat-messages-panel">
+              <div class="empty"><p>Select a client to view conversation</p></div>
+            </div>
+            <div style="padding:16px;border-top:1px solid var(--gray-100);display:flex;gap:10px;" id="agent-reply-box">
+              <input type="text" id="agent-reply-input" placeholder="Type reply to send via WhatsApp..." style="flex:1;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;" onkeydown="if(event.key==='Enter')sendAgentReply()"/>
+              <button class="btn btn-primary" onclick="sendAgentReply()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TEAMS PAGE ── -->
+      <div class="page" id="page-teams">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Teams</span><button class="btn btn-primary btn-sm" onclick="openModal('modal-add-team')">+ Add Team</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Team Name</th><th>Manager</th><th>Members</th></tr></thead>
+                <tbody id="teams-table"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Add Team</span></div>
+            <div class="card-body">
+              <div class="field"><label>Team Name</label><input type="text" id="team-name" placeholder="e.g. Plot Trading Team"/></div>
+              <div class="field"><label>Manager</label>
+                <select id="team-manager"><option value="">Select manager...</option></select>
+              </div>
+              <button class="btn btn-primary" onclick="createTeam()">Create Team</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USERS PAGE ── -->
+      <div class="page" id="page-users">
+        <div class="card">
+          <div class="card-header"><span class="card-title">All Users</span><button class="btn btn-primary btn-sm" onclick="openModal('modal-add-user')">+ Add User</button></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Full Name</th><th>Username</th><th>Role</th><th>Team</th><th>Status</th><th>Last Login</th></tr></thead>
+              <tbody id="users-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PLOT RATES PAGE ── -->
+      <div class="page" id="page-rates">
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><span class="card-title">Update Plot Rate</span></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field"><label>Sector</label><input type="text" id="rate-sector" placeholder="e.g. A, B, K, V"/></div>
+              <div class="field"><label>Plot Type</label>
+                <select id="rate-type"><option value="residential">Residential</option><option value="commercial">Commercial</option></select>
+              </div>
+              <div class="field"><label>Size</label><input type="text" id="rate-size" placeholder="e.g. 5 Marla, 1 Kanal"/></div>
+              <div class="field"><label>Min Price (PKR)</label><input type="number" id="rate-min" placeholder="e.g. 5000000"/></div>
+              <div class="field"><label>Max Price (PKR)</label><input type="number" id="rate-max" placeholder="e.g. 7000000"/></div>
+              <div class="field"><label>Notes (optional)</label><input type="text" id="rate-notes" placeholder="e.g. Possession available"/></div>
+            </div>
+            <button class="btn btn-primary" onclick="saveRate()" style="margin-top:4px;">Save Rate</button>
+            <span id="rate-msg" style="margin-left:12px;font-size:13px;color:var(--green);"></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Current Plot Rates</span><button class="btn btn-secondary btn-sm" onclick="loadRates()">↻ Refresh</button></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Sector</th><th>Type</th><th>Size</th><th>Min Price</th><th>Max Price</th><th>Notes</th><th>Updated</th></tr></thead>
+              <tbody id="rates-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS PAGE ── -->
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="card-header"><span class="card-title">System Settings</span></div>
+          <div class="card-body">
+            <div class="field" style="max-width:400px;">
+              <label>Assignment Mode</label>
+              <select id="setting-assignment">
+                <option value="manual">Manual — Manager assigns each lead</option>
+                <option value="round_robin">Round Robin — Auto distribute evenly</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:400px;">
+              <label>Agent Reminder (minutes)</label>
+              <input type="number" id="setting-agent-reminder" placeholder="30" min="5" max="120"/>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px;">If agent doesn't reply within X minutes, send reminder</div>
+            </div>
+            <div class="field" style="max-width:400px;">
+              <label>Manager Escalation (minutes)</label>
+              <input type="number" id="setting-manager-reminder" placeholder="60" min="15" max="480"/>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px;">If agent still doesn't reply, notify manager after X minutes</div>
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            <span id="settings-msg" style="margin-left:12px;font-size:13px;color:var(--green);"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay hidden" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-title">Add New User</div>
+    <div class="form-grid">
+      <div class="field full"><label>Full Name</label><input type="text" id="new-fullname" placeholder="e.g. Ahmed Khan"/></div>
+      <div class="field"><label>Username</label><input type="text" id="new-username" placeholder="e.g. ahmed.khan"/></div>
+      <div class="field"><label>Password</label><input type="password" id="new-password" placeholder="min 6 characters"/></div>
+      <div class="field"><label>Role</label>
+        <select id="new-role">
+          <option value="agent">Agent</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field"><label>Team</label>
+        <select id="new-team"><option value="">No team</option></select>
+      </div>
+    </div>
+    <div id="add-user-error" class="login-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-assign">
+  <div class="modal">
+    <div class="modal-title">Assign / Transfer Lead</div>
+    <input type="hidden" id="assign-phone"/>
+    <div class="field"><label>Client</label><div id="assign-client-name" style="font-weight:600;font-size:14px;padding:8px 0;"></div></div>
+    <div class="field"><label>Select Agent</label>
+      <select id="assign-agent-select"><option value="">Loading agents...</option></select>
+    </div>
+    <div class="field"><label>Reason (optional)</label><textarea id="assign-reason" placeholder="Reason for transfer..."></textarea></div>
+    <div id="assign-error" class="login-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-assign')">Cancel</button>
+      <button class="btn btn-primary" onclick="doAssign()">Assign / Transfer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('bodla_token');
+let currentUser = JSON.parse(localStorage.getItem('bodla_user') || 'null');
+let currentChatPhone = null;
+let allClients = [];
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch(`${API}/api/login`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('bodla_token', token);
+    localStorage.setItem('bodla_user', JSON.stringify(currentUser));
+    initApp();
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function logout() {
+  localStorage.removeItem('bodla_token');
+  localStorage.removeItem('bodla_user');
+  token = null; currentUser = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}};
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
+  if (res.status === 401) { logout(); return null; }
+  return res.json();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('user-name').textContent = currentUser.full_name;
+  document.getElementById('user-role').textContent = currentUser.role;
+  document.getElementById('user-avatar').textContent = currentUser.full_name[0].toUpperCase();
+
+  // Hide admin-only items for non-admins
+  if (currentUser.role !== 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  }
+
+  loadDashboard();
+  loadLeads();
+  loadClients();
+}
+
+// Auto-login if token exists
+if (token && currentUser) {
+  initApp();
+} else {
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+const pageTitles = {
+  dashboard:'Dashboard', leads:'Leads', chats:'All Chats',
+  teams:'Teams', users:'Users', rates:'Plot Rates', settings:'Settings'
+};
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[name] || name;
+  document.getElementById('topbar-actions').innerHTML = '';
+
+  if (name === 'leads') loadLeads();
+  if (name === 'chats') loadClients();
+  if (name === 'teams') { loadTeams(); loadManagersForSelect(); }
+  if (name === 'users') { loadUsers(); loadTeamsForSelect('new-team'); }
+  if (name === 'rates') loadRates();
+  if (name === 'settings') loadSettings();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const clients = await api('/api/clients');
+  if (!clients) return;
+  allClients = clients;
+  const leads = await api('/api/leads');
+  const unassigned = leads ? leads.filter(l => !l.assigned_to).length : 0;
+  const active = leads ? leads.filter(l => l.assigned_to).length : 0;
+  const totalMsgs = clients.reduce((s,c) => s + (c.messages?.length || 0), 0);
+
+  document.getElementById('s-total').textContent = clients.length;
+  document.getElementById('s-leads').textContent = unassigned;
+  document.getElementById('s-active').textContent = active;
+  document.getElementById('s-messages').textContent = totalMsgs;
+  document.getElementById('leads-badge').textContent = unassigned;
+
+  const recent = leads ? leads.slice(0,5) : [];
+  document.getElementById('dashboard-recent').innerHTML = recent.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr><th style="text-align:left;padding:8px 12px;color:var(--gray-500);font-size:11px;text-transform:uppercase;">Client</th><th style="text-align:left;padding:8px 12px;color:var(--gray-500);font-size:11px;">Phone</th><th style="text-align:left;padding:8px 12px;color:var(--gray-500);font-size:11px;">Status</th></tr></thead>
+      <tbody>${recent.map(l=>`<tr><td style="padding:10px 12px;font-weight:600;">${l.name||'Unknown'}</td><td style="padding:10px 12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500);">${l.phone}</td><td style="padding:10px 12px;">${l.assigned_to ? `<span class="badge badge-green">With Agent</span>` : `<span class="badge badge-amber">Unassigned</span>`}</td></tr>`).join('')}</tbody>
+    </table>` : '<div class="empty"><p>No leads yet</p></div>';
+}
+
+// ── LEADS ─────────────────────────────────────────────────────────────────────
+async function loadLeads() {
+  const leads = await api('/api/leads');
+  if (!leads) return;
+  document.getElementById('leads-badge').textContent = leads.filter(l=>!l.assigned_to).length;
+
+  const tbody = document.getElementById('leads-table-body');
+  if (!leads.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><p>No leads yet</p></div></td></tr>'; return; }
+
+  tbody.innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="td-name">${l.name || 'Unknown'}</td>
+      <td class="td-phone">${l.phone}</td>
+      <td>${l.assigned_agent ? l.assigned_agent.full_name : '<span style="color:var(--gray-400);font-style:italic;">Unassigned</span>'}</td>
+      <td>${l.team ? l.team.name : '—'}</td>
+      <td>${l.is_locked ? '<span class="badge badge-green">🔒 Locked</span>' : l.assigned_to ? '<span class="badge badge-blue">Active</span>' : '<span class="badge badge-amber">New</span>'}</td>
+      <td style="font-size:12px;color:var(--gray-500);">${timeAgo(l.last_seen)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openAssign('${l.phone}','${(l.name||'Unknown').replace(/'/g,'&apos;')}')">Assign / Transfer</button></td>
+    </tr>
+  `).join('');
+}
+
+async function openAssign(phone, name) {
+  document.getElementById('assign-phone').value = phone;
+  document.getElementById('assign-client-name').textContent = `${name} — ${phone}`;
+  document.getElementById('assign-reason').value = '';
+  document.getElementById('assign-error').style.display = 'none';
+  await loadAgentsForAssign();
+  openModal('modal-assign');
+}
+
+async function loadAgentsForAssign() {
+  const users = await api('/api/users?role=agent');
+  const sel = document.getElementById('assign-agent-select');
+  sel.innerHTML = '<option value="">Select agent...</option>' +
+    (users||[]).map(u=>`<option value="${u.id}">${u.full_name} (${u.username})</option>`).join('');
+}
+
+async function doAssign() {
+  const phone = document.getElementById('assign-phone').value;
+  const agentId = document.getElementById('assign-agent-select').value;
+  const reason = document.getElementById('assign-reason').value;
+  const errEl = document.getElementById('assign-error');
+  if (!agentId) { errEl.textContent='Please select an agent'; errEl.style.display='block'; return; }
+
+  const res = await api('/api/leads/transfer', 'POST', {client_phone:phone, to_agent_id:agentId, reason});
+  if (res?.success) {
+    closeModal('modal-assign');
+    loadLeads();
+  } else {
+    // Try assign if not yet assigned
+    const res2 = await api('/api/leads/assign', 'POST', {client_phone:phone, agent_id:agentId});
+    if (res2?.success) { closeModal('modal-assign'); loadLeads(); }
+    else { errEl.textContent = res2?.error || 'Failed'; errEl.style.display='block'; }
+  }
+}
+
+// ── CHATS ─────────────────────────────────────────────────────────────────────
+async function loadClients() {
+  const clients = await api('/api/clients');
+  if (!clients) return;
+  allClients = clients;
+  const list = document.getElementById('chat-client-list');
+  list.innerHTML = clients.map(c=>`
+    <div onclick="selectChat('${c.phone}')" style="padding:12px 16px;border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''" id="client-item-${c.phone.replace(/\+/g,'p')}">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:600;font-size:13px;">${c.name||'Unknown'}</div>
+        <div style="font-size:11px;color:var(--gray-400);">${timeAgo(c.last_seen)}</div>
+      </div>
+      <div style="font-size:12px;color:var(--gray-500);font-family:'DM Mono',monospace;">${c.phone}</div>
+      <div style="margin-top:4px;">${c.escalated?'<span class="badge badge-amber" style="font-size:10px;">Escalated</span>':''} ${c.is_locked?'<span class="badge badge-green" style="font-size:10px;">🔒 Agent</span>':''}</div>
+    </div>
+  `).join('');
+}
+
+async function selectChat(phone) {
+  currentChatPhone = phone;
+  const client = allClients.find(c=>c.phone===phone);
+  document.getElementById('chat-panel-header').innerHTML = `
+    <div>
+      <div style="font-weight:600;font-size:14px;">${client?.name||phone}</div>
+      <div style="font-size:12px;color:var(--gray-500);">${phone} · ${client?.messages?.length||0} messages</div>
+    </div>`;
+
+  const msgs = client?.messages || [];
+  const panel = document.getElementById('chat-messages-panel');
+  panel.innerHTML = msgs.length ? msgs.map(m=>`
+    <div style="display:flex;flex-direction:column;align-items:${m.role==='user'?'flex-end':'flex-start'};">
+      <div style="max-width:75%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;background:${m.role==='user'?'#dcf8c6':m.role==='agent'?'#dbeafe':'var(--gray-100)'};">
+        ${m.role==='agent'?'<div style="font-size:10px;color:var(--blue);font-weight:600;margin-bottom:2px;">AGENT</div>':''}
+        ${m.content}
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">${formatTime(m.created_at)}</div>
+    </div>
+  `).join('') : '<div class="empty"><p>No messages yet</p></div>';
+  panel.scrollTop = panel.scrollHeight;
+}
+
+async function sendAgentReply() {
+  if (!currentChatPhone) return;
+  const input = document.getElementById('agent-reply-input');
+  const message = input.value.trim();
+  if (!message) return;
+  const res = await api('/api/agent/reply', 'POST', {client_phone:currentChatPhone, message});
+  if (res?.success) {
+    input.value = '';
+    await loadClients();
+    selectChat(currentChatPhone);
+  } else {
+    alert(res?.error || 'Failed to send');
+  }
+}
+
+// ── TEAMS ─────────────────────────────────────────────────────────────────────
+async function loadTeams() {
+  const teams = await api('/api/teams');
+  const tbody = document.getElementById('teams-table');
+  if (!teams?.length) { tbody.innerHTML='<tr><td colspan="3"><div class="empty"><p>No teams yet</p></div></td></tr>'; return; }
+  tbody.innerHTML = teams.map(t=>`
+    <tr>
+      <td class="td-name">${t.name}</td>
+      <td>${t.manager?.full_name||'—'}</td>
+      <td>—</td>
+    </tr>
+  `).join('');
+}
+
+async function loadManagersForSelect() {
+  const users = await api('/api/users?role=manager');
+  const sel = document.getElementById('team-manager');
+  sel.innerHTML = '<option value="">Select manager...</option>' +
+    (users||[]).map(u=>`<option value="${u.id}">${u.full_name}</option>`).join('');
+}
+
+async function createTeam() {
+  const name = document.getElementById('team-name').value.trim();
+  const manager_id = document.getElementById('team-manager').value;
+  if (!name) return alert('Team name required');
+  const res = await api('/api/teams','POST',{name, manager_id:manager_id||null});
+  if (res?.id) { document.getElementById('team-name').value=''; loadTeams(); }
+  else alert(res?.error||'Failed');
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const users = await api('/api/users');
+  const tbody = document.getElementById('users-table');
+  if (!users?.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty"><p>No users yet</p></div></td></tr>'; return; }
+  tbody.innerHTML = users.map((u,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="td-name">${u.full_name}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;">${u.username}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='manager'?'badge-blue':'badge-gray'}">${u.role}</span></td>
+      <td>—</td>
+      <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'Active':'Inactive'}</span></td>
+      <td style="font-size:12px;color:var(--gray-500);">${u.last_login?timeAgo(u.last_login):'Never'}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadTeamsForSelect(selectId) {
+  const teams = await api('/api/teams');
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '<option value="">No team</option>' +
+    (teams||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+async function createUser() {
+  const full_name = document.getElementById('new-fullname').value.trim();
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-password').value;
+  const role = document.getElementById('new-role').value;
+  const team_id = document.getElementById('new-team').value;
+  const errEl = document.getElementById('add-user-error');
+  errEl.style.display='none';
+  if (!full_name||!username||!password) { errEl.textContent='All fields required'; errEl.style.display='block'; return; }
+  const res = await api('/api/users','POST',{full_name,username,password,role,team_id:team_id||null});
+  if (res?.id) { closeModal('modal-add-user'); loadUsers(); }
+  else { errEl.textContent=res?.error||'Failed'; errEl.style.display='block'; }
+}
+
+// ── RATES ─────────────────────────────────────────────────────────────────────
+async function loadRates() {
+  const rates = await api('/api/plot-rates');
+  const tbody = document.getElementById('rates-table');
+  if (!rates?.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty"><p>No rates added yet. Add your first rate above.</p></div></td></tr>'; return; }
+  tbody.innerHTML = rates.map(r=>`
+    <tr>
+      <td class="td-name">Sector ${r.sector}</td>
+      <td><span class="badge ${r.plot_type==='residential'?'badge-green':'badge-blue'}">${r.plot_type}</span></td>
+      <td>${r.size}</td>
+      <td style="font-weight:600;color:var(--green);">${fmt(r.min_price)}</td>
+      <td style="font-weight:600;color:var(--green);">${fmt(r.max_price)}</td>
+      <td style="font-size:12px;color:var(--gray-500);">${r.notes||'—'}</td>
+      <td style="font-size:12px;color:var(--gray-500);">${timeAgo(r.updated_at)}</td>
+    </tr>
+  `).join('');
+}
+
+async function saveRate() {
+  const sector = document.getElementById('rate-sector').value.trim();
+  const plot_type = document.getElementById('rate-type').value;
+  const size = document.getElementById('rate-size').value.trim();
+  const min_price = parseInt(document.getElementById('rate-min').value);
+  const max_price = parseInt(document.getElementById('rate-max').value);
+  const notes = document.getElementById('rate-notes').value.trim();
+  const msg = document.getElementById('rate-msg');
+  if (!sector||!size||!min_price||!max_price) { msg.style.color='var(--red)'; msg.textContent='Fill all required fields'; return; }
+  const res = await api('/api/plot-rates','POST',{sector,plot_type,size,min_price,max_price,notes});
+  if (res?.success) { msg.style.color='var(--green)'; msg.textContent='✓ Saved!'; loadRates(); setTimeout(()=>msg.textContent='',3000); }
+  else { msg.style.color='var(--red)'; msg.textContent=res?.error||'Failed'; }
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const settings = await api('/api/settings');
+  if (!settings) return;
+  const map = Object.fromEntries(settings.map(s=>[s.key,s.value]));
+  if (map.assignment_mode) document.getElementById('setting-assignment').value = map.assignment_mode;
+  if (map.agent_reminder_minutes) document.getElementById('setting-agent-reminder').value = map.agent_reminder_minutes;
+  if (map.manager_reminder_minutes) document.getElementById('setting-manager-reminder').value = map.manager_reminder_minutes;
+}
+
+async function saveSettings() {
+  const msg = document.getElementById('settings-msg');
+  const mode = document.getElementById('setting-assignment').value;
+  const agentMin = document.getElementById('setting-agent-reminder').value;
+  const managerMin = document.getElementById('setting-manager-reminder').value;
+  await api('/api/settings','POST',{key:'assignment_mode',value:mode});
+  await api('/api/settings','POST',{key:'agent_reminder_minutes',value:agentMin});
+  await api('/api/settings','POST',{key:'manager_reminder_minutes',value:managerMin});
+  msg.textContent='✓ Settings saved!'; setTimeout(()=>msg.textContent='',3000);
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); });
+});
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function timeAgo(d) {
+  if (!d) return '—';
+  const diff = Math.floor((Date.now()-new Date(d))/1000);
+  if (diff<60) return 'just now';
+  if (diff<3600) return Math.floor(diff/60)+'m ago';
+  if (diff<86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+function formatTime(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+}
+function fmt(n) {
+  if (!n) return '—';
+  if (n>=10000000) return 'Rs '+(n/10000000).toFixed(1)+' Cr';
+  if (n>=100000) return 'Rs '+(n/100000).toFixed(1)+' L';
+  return 'Rs '+n.toLocaleString();
+}
+</script>
+</body>
+</html>
