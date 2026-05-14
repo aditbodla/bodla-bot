@@ -163,10 +163,15 @@ app.post("/webhook", async (req, res) => {
     const history = await db.getChatHistory(clientPhone);
 
     // 5. Build messages array for OpenAI
+    // Map 'agent' role to 'assistant' since OpenAI only accepts user/assistant
     const messages = [
       { role: "system", content: buildSystemPrompt() },
-      ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...history.map((m) => ({ 
+        role: m.role === "agent" ? "assistant" : m.role, 
+        content: m.role === "agent" ? `[Agent replied]: ${m.content}` : m.content
+      })),
     ];
+    console.log("Calling OpenAI with", messages.length, "messages");
 
     // 6. Call OpenAI
     const completion = await openai.chat.completions.create({
