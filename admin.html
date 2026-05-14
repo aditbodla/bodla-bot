@@ -897,6 +897,38 @@ function formatTime(d) {
   if (!d) return '';
   return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 }
+function toggleMenu(id) {
+  document.querySelectorAll('[id^="menu-"]').forEach(m => { if(m.id!==id) m.style.display='none'; });
+  const m = document.getElementById(id);
+  m.style.display = m.style.display==='none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('[id^="menu-"]') && !e.target.textContent.includes('Actions')) {
+    document.querySelectorAll('[id^="menu-"]').forEach(m => m.style.display='none');
+  }
+});
+
+async function blockUser(id, name) {
+  if (!confirm(`Block "${name}"? They cannot login until restored.`)) return;
+  const res = await api(`/api/users/${id}/block`, 'PUT');
+  if (res?.success) loadUsers();
+  else alert(res?.error||'Failed');
+}
+
+async function restoreUser(id, name) {
+  if (!confirm(`Restore "${name}"?`)) return;
+  const res = await api(`/api/users/${id}/restore`, 'PUT');
+  if (res?.success) loadUsers();
+  else alert(res?.error||'Failed');
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Permanently delete "${name}"?\nThis frees their username but cannot be undone.`)) return;
+  const res = await api(`/api/users/${id}`, 'DELETE');
+  if (res?.success) loadUsers();
+  else alert(res?.error||'Failed');
+}
+
 function fmt(n) {
   if (!n) return '—';
   if (n>=10000000) return 'Rs '+(n/10000000).toFixed(1)+' Cr';

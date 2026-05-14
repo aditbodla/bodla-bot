@@ -335,15 +335,22 @@ app.post("/api/agent/reply", auth.requireAuth(["admin", "manager", "agent"]), as
     const { client_phone, message } = req.body;
     if (!client_phone || !message) return res.status(400).json({ error: "client_phone and message required" });
 
-    await twilioClient.messages.create({
+    // Ensure phone has + prefix
+    const phone = client_phone.startsWith("+") ? client_phone : `+${client_phone}`;
+
+    console.log(`Agent reply: sending to whatsapp:${phone} from whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`);
+
+    const result = await twilioClient.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: `whatsapp:${client_phone}`,
+      to: `whatsapp:${phone}`,
       body: message,
     });
 
-    await db.saveMessage(client_phone, "agent", message);
-    res.json({ success: true });
+    console.log("Twilio message SID:", result.sid);
+    await db.saveMessage(phone, "agent", message);
+    res.json({ success: true, sid: result.sid });
   } catch (err) {
+    console.error("Agent reply error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -425,14 +432,43 @@ app.put("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
   }
 });
 
-// ─── Delete User ──────────────────────────────────────────────────────────────
-app.delete("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
+// ─── Block User (deactivate, keep username) ───────────────────────────────────
+app.put("/api/users/:id/block", auth.requireAuth(["admin"]), async (req, res) => {
   try {
     const { createClient: sc } = require("@supabase/supabase-js");
     const ws2 = require("ws");
     const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
     const { error } = await supa.from("users").update({ is_active: false }).eq("id", req.params.id);
     if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── Restore User ─────────────────────────────────────────────────────────────
+app.put("/api/users/:id/restore", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { error } = await supa.from("users").update({ is_active: true }).eq("id", req.params.id);
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ─── Delete User (permanent — frees username) ────────────────────────────────
+app.delete("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    // Append deleted_ prefix to username to free it up
+    const ts = Date.now();
+    await supa.from("users").update({ username: \`deleted_\${ts}\`, is_active: false }).eq("id", req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
