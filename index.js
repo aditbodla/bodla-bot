@@ -468,7 +468,7 @@ app.delete("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
     const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
     // Append deleted_ prefix to username to free it up
     const ts = Date.now();
-    await supa.from("users").update({ username: \`deleted_\${ts}\`, is_active: false }).eq("id", req.params.id);
+    await supa.from("users").update({ username: `deleted_${ts}`, is_active: false }).eq("id", req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
