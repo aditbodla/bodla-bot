@@ -479,3 +479,48 @@ app.delete("/api/users/:id", auth.requireAuth(["admin"]), async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// ─── Plot Sectors ─────────────────────────────────────────────────────────────
+app.get("/api/plot-sectors", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { data } = await supa.from("plot_sectors").select("*").order("sector").order("plot_type").order("size");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/plot-sectors", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { sector, plot_type, size, plot_from, plot_to, base_price_min, base_price_max, notes } = req.body;
+    const { data, error } = await supa.from("plot_sectors").insert({ sector, plot_type, size, plot_from, plot_to, base_price_min, base_price_max, notes, updated_by: req.user.id }).select().single();
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Plot Features ────────────────────────────────────────────────────────────
+app.get("/api/plot-features", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { data } = await supa.from("plot_features").select("*").order("name");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Plot Charges ─────────────────────────────────────────────────────────────
+app.get("/api/plot-charges", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { data } = await supa.from("plot_charges").select("*").order("charge_name");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});

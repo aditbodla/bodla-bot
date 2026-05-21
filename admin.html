@@ -224,6 +224,10 @@ tr:hover td{background:var(--gray-50);}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
         Plot Rates
       </div>
+      <div class="nav-item" onclick="showPage('estimator',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+        Plot Estimator
+      </div>
       <div class="nav-item admin-only" onclick="showPage('settings',this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
         Settings
@@ -368,6 +372,100 @@ tr:hover td{background:var(--gray-50);}
               <tbody id="rates-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ── PLOT ESTIMATOR PAGE ── -->
+      <div class="page" id="page-estimator">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+          <!-- Left: Input -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Plot Estimator</span></div>
+            <div class="card-body">
+              <div class="field">
+                <label>Sector</label>
+                <select id="est-sector" onchange="updateSizes()">
+                  <option value="">Select sector...</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Plot Type</label>
+                <select id="est-type" onchange="updateSizes()">
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Plot Size</label>
+                <select id="est-size">
+                  <option value="">Select size...</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Plot Number (optional)</label>
+                <input type="number" id="est-plotno" placeholder="e.g. 245" min="1"/>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">Used to verify plot falls in correct range</div>
+              </div>
+
+              <div class="field">
+                <label>Plot Features</label>
+                <div id="est-features" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;"></div>
+              </div>
+
+              <button class="btn btn-primary" onclick="calculateEstimate()" style="width:100%;margin-top:8px;">Calculate Estimate</button>
+            </div>
+          </div>
+
+          <!-- Right: Result -->
+          <div>
+            <div class="card" id="est-result-card" style="display:none;">
+              <div class="card-header" style="background:var(--green);border-radius:12px 12px 0 0;">
+                <span class="card-title" style="color:white;">Estimation Result</span>
+              </div>
+              <div class="card-body">
+                <div style="text-align:center;padding:12px 0 20px;">
+                  <p style="font-size:12px;color:var(--gray-500);margin-bottom:4px;">Estimated Plot Value</p>
+                  <p style="font-size:28px;font-weight:700;color:var(--green);" id="est-price-range">—</p>
+                  <p style="font-size:12px;color:var(--gray-400);" id="est-plot-info">—</p>
+                </div>
+
+                <div style="border-top:1px solid var(--gray-100);padding-top:16px;">
+                  <p style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Feature Premiums Applied</p>
+                  <div id="est-features-applied" style="display:flex;flex-direction:column;gap:6px;"></div>
+                </div>
+
+                <div style="border-top:1px solid var(--gray-100);padding-top:16px;margin-top:16px;">
+                  <p style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Additional Charges</p>
+                  <div id="est-charges" style="display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
+
+                <div style="background:var(--gray-50);border-radius:10px;padding:14px;margin-top:16px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--gray-600);">Plot Value</span>
+                    <span style="font-size:13px;font-weight:600;" id="est-total-plot">—</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--gray-600);">Total Charges</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--amber);" id="est-total-charges">—</span>
+                  </div>
+                  <div style="border-top:1px solid var(--gray-200);padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:14px;font-weight:700;color:var(--gray-900);">Total Investment</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--green);" id="est-grand-total">—</span>
+                  </div>
+                </div>
+
+                <p style="font-size:11px;color:var(--gray-400);margin-top:12px;text-align:center;">* Estimation based on current market rates. Actual price may vary. Contact sales agent for exact quote.</p>
+              </div>
+            </div>
+
+            <!-- Charges Reference -->
+            <div class="card" style="margin-top:0;" id="est-no-result">
+              <div class="card-header"><span class="card-title">Charges Reference</span></div>
+              <div class="card-body" id="charges-reference"><div class="loading">Loading...</div></div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -557,7 +655,8 @@ if (token && currentUser) {
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
 const pageTitles = {
   dashboard:'Dashboard', leads:'Leads', chats:'All Chats',
-  teams:'Teams', users:'Users', rates:'Plot Rates', settings:'Settings'
+  teams:'Teams', users:'Users', rates:'Plot Rates', 
+  estimator:'Plot Estimator', settings:'Settings'
 };
 
 function showPage(name, el) {
@@ -573,6 +672,7 @@ function showPage(name, el) {
   if (name === 'teams') { loadTeams(); loadManagersForSelect(); }
   if (name === 'users') { loadUsers(); loadTeamsForSelect('new-team'); }
   if (name === 'rates') loadRates();
+  if (name === 'estimator') initEstimator();
   if (name === 'settings') loadSettings();
 }
 
@@ -927,6 +1027,148 @@ async function deleteUser(id, name) {
   const res = await api(`/api/users/${id}`, 'DELETE');
   if (res?.success) loadUsers();
   else alert(res?.error||'Failed');
+}
+
+// ── ESTIMATOR ────────────────────────────────────────────────────────────────
+let sectorsData = [];
+let featuresData = [];
+let chargesData = [];
+
+async function initEstimator() {
+  const [sectors, features, charges] = await Promise.all([
+    api('/api/plot-sectors'),
+    api('/api/plot-features'),
+    api('/api/plot-charges')
+  ]);
+  sectorsData = sectors || [];
+  featuresData = features || [];
+  chargesData = charges || [];
+
+  // Populate sector dropdown (unique sectors)
+  const uniqueSectors = [...new Set(sectorsData.map(s => s.sector))].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+  const sel = document.getElementById('est-sector');
+  sel.innerHTML = '<option value="">Select sector...</option>' + uniqueSectors.map(s => `<option value="${s}">Sector ${s}</option>`).join('');
+
+  // Render features checkboxes
+  const featEl = document.getElementById('est-features');
+  featEl.innerHTML = featuresData.map(f => `
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;background:var(--gray-50);border-radius:6px;padding:8px 10px;">
+      <input type="checkbox" value="${f.id}" data-premium="${f.premium_percent}" data-name="${f.name}" style="margin-top:2px;flex-shrink:0;accent-color:var(--green);"/>
+      <div>
+        <div style="font-size:13px;font-weight:500;">${f.name}</div>
+        <div style="font-size:11px;color:var(--green);">+${f.premium_percent}% premium</div>
+      </div>
+    </label>
+  `).join('');
+
+  // Render charges reference
+  renderChargesReference();
+}
+
+function updateSizes() {
+  const sector = document.getElementById('est-sector').value;
+  const type = document.getElementById('est-type').value;
+  const sizeSel = document.getElementById('est-size');
+  const sizes = sectorsData.filter(s => s.sector === sector && s.plot_type === type);
+  sizeSel.innerHTML = '<option value="">Select size...</option>' + sizes.map(s => `<option value="${s.id}">${s.size}</option>`).join('');
+}
+
+function calculateEstimate() {
+  const sectorId = document.getElementById('est-size').value;
+  const plotNo = parseInt(document.getElementById('est-plotno').value) || null;
+  if (!sectorId) { alert('Please select sector, type and size first'); return; }
+
+  const sectorData = sectorsData.find(s => s.id === sectorId);
+  if (!sectorData) return;
+
+  // Check plot number range
+  let rangeNote = '';
+  if (plotNo) {
+    if (plotNo >= sectorData.plot_from && plotNo <= sectorData.plot_to) {
+      rangeNote = `Plot #${plotNo} ✓ falls in Sector ${sectorData.sector} range (${sectorData.plot_from}–${sectorData.plot_to})`;
+    } else {
+      rangeNote = `⚠ Plot #${plotNo} is outside typical range for Sector ${sectorData.sector} (${sectorData.plot_from}–${sectorData.plot_to})`;
+    }
+  }
+
+  // Get selected features
+  const checkedFeatures = [...document.querySelectorAll('#est-features input:checked')];
+  let totalPremium = 0;
+  checkedFeatures.forEach(f => totalPremium += parseFloat(f.dataset.premium));
+
+  // Calculate price with premiums
+  const minWithPremium = Math.round(sectorData.base_price_min * (1 + totalPremium/100));
+  const maxWithPremium = Math.round(sectorData.base_price_max * (1 + totalPremium/100));
+  const avgPrice = Math.round((minWithPremium + maxWithPremium) / 2);
+
+  // Calculate charges
+  const applicableCharges = chargesData.filter(c =>
+    (c.plot_type === 'all' || c.plot_type === sectorData.plot_type) &&
+    (c.size === 'all' || c.size === sectorData.size)
+  );
+
+  let totalChargesMin = 0, totalChargesMax = 0;
+  const chargeDetails = applicableCharges.map(c => {
+    let amtMin, amtMax;
+    if (c.calculation_base === 'fixed') {
+      amtMin = amtMax = c.amount;
+    } else if (c.calculation_base === 'percentage_of_price') {
+      amtMin = Math.round(minWithPremium * c.percentage / 100);
+      amtMax = Math.round(maxWithPremium * c.percentage / 100);
+    }
+    totalChargesMin += amtMin || 0;
+    totalChargesMax += amtMax || 0;
+    return { name: c.charge_name, amtMin, amtMax, notes: c.notes };
+  });
+
+  // Render result
+  document.getElementById('est-result-card').style.display = 'block';
+  document.getElementById('est-no-result').style.display = 'none';
+  document.getElementById('est-price-range').textContent = `${fmt(minWithPremium)} – ${fmt(maxWithPremium)}`;
+  document.getElementById('est-plot-info').textContent = `Sector ${sectorData.sector} · ${sectorData.size} · ${sectorData.plot_type}${rangeNote ? ' · ' + rangeNote : ''}`;
+
+  // Features applied
+  const featEl = document.getElementById('est-features-applied');
+  featEl.innerHTML = checkedFeatures.length ? checkedFeatures.map(f => `
+    <div style="display:flex;justify-content:space-between;font-size:13px;">
+      <span style="color:var(--gray-700);">${f.dataset.name}</span>
+      <span style="color:var(--green);font-weight:600;">+${f.dataset.premium}%</span>
+    </div>
+  `).join('') + `<div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--gray-100);padding-top:6px;margin-top:4px;"><span style="font-weight:600;">Total Premium</span><span style="color:var(--green);font-weight:700;">+${totalPremium}%</span></div>`
+  : '<p style="font-size:13px;color:var(--gray-400);">No features selected — base rate applied</p>';
+
+  // Charges
+  const chargesEl = document.getElementById('est-charges');
+  chargesEl.innerHTML = chargeDetails.map(c => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:13px;">
+      <div>
+        <span style="color:var(--gray-700);">${c.name}</span>
+        ${c.notes ? `<div style="font-size:11px;color:var(--gray-400);">${c.notes}</div>` : ''}
+      </div>
+      <span style="font-weight:600;white-space:nowrap;margin-left:12px;">${c.amtMin === c.amtMax ? fmt(c.amtMin) : fmt(c.amtMin)+' – '+fmt(c.amtMax)}</span>
+    </div>
+  `).join('');
+
+  // Totals
+  document.getElementById('est-total-plot').textContent = `${fmt(minWithPremium)} – ${fmt(maxWithPremium)}`;
+  document.getElementById('est-total-charges').textContent = `${fmt(totalChargesMin)} – ${fmt(totalChargesMax)}`;
+  document.getElementById('est-grand-total').textContent = `${fmt(minWithPremium + totalChargesMin)} – ${fmt(maxWithPremium + totalChargesMax)}`;
+}
+
+function renderChargesReference() {
+  const el = document.getElementById('charges-reference');
+  if (!chargesData.length) { el.innerHTML = '<p style="color:var(--gray-400);font-size:13px;">No charges defined yet</p>'; return; }
+  el.innerHTML = chargesData.map(c => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px;">
+      <div>
+        <div style="font-weight:500;">${c.charge_name}</div>
+        ${c.notes ? `<div style="font-size:11px;color:var(--gray-400);">${c.notes}</div>` : ''}
+      </div>
+      <div style="text-align:right;white-space:nowrap;margin-left:12px;">
+        ${c.calculation_base === 'fixed' ? fmt(c.amount) : `${c.percentage}% of value`}
+      </div>
+    </div>
+  `).join('');
 }
 
 function fmt(n) {
