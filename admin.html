@@ -347,32 +347,150 @@ tr:hover td{background:var(--gray-50);}
 
       <!-- ── PLOT RATES PAGE ── -->
       <div class="page" id="page-rates">
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-header"><span class="card-title">Update Plot Rate</span></div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="field"><label>Sector</label><input type="text" id="rate-sector" placeholder="e.g. A, B, K, V"/></div>
-              <div class="field"><label>Plot Type</label>
-                <select id="rate-type"><option value="residential">Residential</option><option value="commercial">Commercial</option></select>
-              </div>
-              <div class="field"><label>Size</label><input type="text" id="rate-size" placeholder="e.g. 5 Marla, 1 Kanal"/></div>
-              <div class="field"><label>Min Price (PKR)</label><input type="number" id="rate-min" placeholder="e.g. 5000000"/></div>
-              <div class="field"><label>Max Price (PKR)</label><input type="number" id="rate-max" placeholder="e.g. 7000000"/></div>
-              <div class="field"><label>Notes (optional)</label><input type="text" id="rate-notes" placeholder="e.g. Possession available"/></div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" onclick="switchRateTab('manual',this)">Manual Entry</button>
+          <button class="tab" onclick="switchRateTab('import',this)">Excel Import</button>
+          <button class="tab" onclick="switchRateTab('view',this)">View All Rates</button>
+          <button class="tab" onclick="switchRateTab('charges',this)">Charges & Features</button>
+        </div>
+
+        <!-- Manual Entry Tab -->
+        <div id="rate-tab-manual">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Add / Update Plot Rate</span>
+              <button class="btn btn-secondary btn-sm" onclick="resetRateForm()">↺ Reset</button>
             </div>
-            <button class="btn btn-primary" onclick="saveRate()" style="margin-top:4px;">Save Rate</button>
-            <span id="rate-msg" style="margin-left:12px;font-size:13px;color:var(--green);"></span>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="field"><label>Sector</label>
+                  <select id="rate-sector">
+                    <option value="">Select sector...</option>
+                  </select>
+                </div>
+                <div class="field"><label>Plot Type</label>
+                  <select id="rate-type" onchange="updateSizeOptions()">
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                  </select>
+                </div>
+                <div class="field"><label>Size</label>
+                  <select id="rate-size">
+                    <option value="5 Marla">5 Marla</option>
+                    <option value="8 Marla">8 Marla</option>
+                    <option value="10 Marla">10 Marla</option>
+                    <option value="1 Kanal">1 Kanal</option>
+                    <option value="2 Kanal">2 Kanal</option>
+                  </select>
+                </div>
+                <div class="field"><label>Plot Number / Range</label>
+                  <input type="text" id="rate-plotno" placeholder="e.g. 245 or 5790-5795 or 1-500"/>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:3px;">Single: 245 &nbsp;|&nbsp; Range: 5790-5795</div>
+                </div>
+                <div class="field"><label>Min Price (Lakhs)</label>
+                  <input type="number" id="rate-min" placeholder="e.g. 18"/>
+                </div>
+                <div class="field"><label>Max Price (Lakhs)</label>
+                  <input type="number" id="rate-max" placeholder="e.g. 30"/>
+                </div>
+                <div class="field full"><label>Notes (optional)</label>
+                  <input type="text" id="rate-notes" placeholder="e.g. Corner block, near park"/>
+                </div>
+              </div>
+
+              <!-- Feature Checkboxes -->
+              <div style="margin-top:16px;">
+                <label style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;">Plot Features</label>
+                <div id="rate-features-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px;"></div>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:20px;align-items:center;">
+                <button class="btn btn-primary" onclick="saveManualRate()">Save Rate</button>
+                <button class="btn btn-secondary" onclick="resetRateForm()">Reset</button>
+                <span id="rate-msg" style="font-size:13px;color:var(--green);"></span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Current Plot Rates</span><button class="btn btn-secondary btn-sm" onclick="loadRates()">↻ Refresh</button></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Sector</th><th>Type</th><th>Size</th><th>Min Price</th><th>Max Price</th><th>Notes</th><th>Updated</th></tr></thead>
-              <tbody id="rates-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
-            </table>
+
+        <!-- Excel Import Tab -->
+        <div id="rate-tab-import" style="display:none;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Import Plot Rates from Excel</span></div>
+            <div class="card-body">
+              <div style="background:var(--blue-pale);border-radius:10px;padding:16px;margin-bottom:20px;">
+                <p style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:6px;">Before importing:</p>
+                <p style="font-size:13px;color:var(--gray-700);margin-bottom:8px;">Download the template, fill your plot data, then upload. System auto-detects all feature columns.</p>
+                <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">⬇ Download Excel Template</button>
+              </div>
+
+              <div style="border:2px dashed var(--gray-300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;" onclick="document.getElementById('excel-upload').click()" id="upload-zone">
+                <div style="font-size:32px;margin-bottom:8px;">📊</div>
+                <p style="font-weight:600;color:var(--gray-700);margin-bottom:4px;">Click to upload Excel file</p>
+                <p style="font-size:12px;color:var(--gray-400);">.xlsx files only · Max 5MB</p>
+                <input type="file" id="excel-upload" accept=".xlsx" style="display:none;" onchange="handleExcelUpload(this)"/>
+              </div>
+
+              <div id="import-preview" style="display:none;margin-top:20px;">
+                <div class="card-header" style="padding:12px 0;"><span class="card-title">Preview</span><span id="import-count" style="font-size:12px;color:var(--gray-500);"></span></div>
+                <div class="table-wrap" style="max-height:300px;overflow-y:auto;">
+                  <table>
+                    <thead><tr id="import-preview-headers"></tr></thead>
+                    <tbody id="import-preview-body"></tbody>
+                  </table>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                  <button class="btn btn-primary" onclick="confirmImport()">✓ Import All Rows</button>
+                  <button class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
+                  <span id="import-msg" style="font-size:13px;color:var(--green);margin-left:4px;"></span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- View All Rates Tab -->
+        <div id="rate-tab-view" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">All Plot Rates</span>
+              <div style="display:flex;gap:8px;">
+                <select id="filter-sector" onchange="loadPlotData()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;">
+                  <option value="">All Sectors</option>
+                </select>
+                <select id="filter-type" onchange="loadPlotData()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;">
+                  <option value="">All Types</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="loadPlotData()">↻ Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Sector</th><th>Type</th><th>Size</th><th>Plot Range</th><th>Min Price</th><th>Max Price</th><th>Features</th><th>Actions</th></tr></thead>
+                <tbody id="plot-data-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charges & Features Tab -->
+        <div id="rate-tab-charges" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Feature Definitions & Premiums</span></div>
+              <div class="card-body" id="feature-definitions-list"><div class="loading">Loading...</div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Charges</span></div>
+              <div class="card-body" id="charges-list-tab"><div class="loading">Loading...</div></div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ── PLOT ESTIMATOR PAGE ── -->
@@ -671,7 +789,7 @@ function showPage(name, el) {
   if (name === 'chats') loadClients();
   if (name === 'teams') { loadTeams(); loadManagersForSelect(); }
   if (name === 'users') { loadUsers(); loadTeamsForSelect('new-team'); }
-  if (name === 'rates') loadRates();
+  if (name === 'rates') initRatesPage();
   if (name === 'estimator') initEstimator();
   if (name === 'settings') loadSettings();
 }
@@ -924,37 +1042,298 @@ async function createUser() {
   else { errEl.textContent=res?.error||'Failed'; errEl.style.display='block'; }
 }
 
-// ── RATES ─────────────────────────────────────────────────────────────────────
+// ── PLOT RATES — FULL SYSTEM ──────────────────────────────────────────────────
+let featureDefinitions = [];
+let importData = [];
+const SECTORS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W1','W2'];
+
+function switchRateTab(tab, el) {
+  ['manual','import','view','charges'].forEach(t => {
+    document.getElementById(`rate-tab-${t}`).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#page-rates .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'view') loadPlotData();
+  if (tab === 'charges') loadChargesTab();
+}
+
 async function loadRates() {
-  const rates = await api('/api/plot-rates');
-  const tbody = document.getElementById('rates-table');
-  if (!rates?.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty"><p>No rates added yet. Add your first rate above.</p></div></td></tr>'; return; }
-  tbody.innerHTML = rates.map(r=>`
-    <tr>
-      <td class="td-name">Sector ${r.sector}</td>
-      <td><span class="badge ${r.plot_type==='residential'?'badge-green':'badge-blue'}">${r.plot_type}</span></td>
-      <td>${r.size}</td>
-      <td style="font-weight:600;color:var(--green);">${fmt(r.min_price)}</td>
-      <td style="font-weight:600;color:var(--green);">${fmt(r.max_price)}</td>
-      <td style="font-size:12px;color:var(--gray-500);">${r.notes||'—'}</td>
-      <td style="font-size:12px;color:var(--gray-500);">${timeAgo(r.updated_at)}</td>
-    </tr>
+  await loadFeatureDefinitions();
+  populateSectorDropdowns();
+  renderFeatureCheckboxes();
+}
+
+async function loadFeatureDefinitions() {
+  const data = await api('/api/feature-definitions');
+  featureDefinitions = data || [];
+}
+
+function populateSectorDropdowns() {
+  const sel = document.getElementById('rate-sector');
+  const filterSel = document.getElementById('filter-sector');
+  const opts = '<option value="">Select sector...</option>' + SECTORS.map(s=>`<option value="${s}">Sector ${s}</option>`).join('');
+  if (sel) sel.innerHTML = opts;
+  if (filterSel) filterSel.innerHTML = '<option value="">All Sectors</option>' + SECTORS.map(s=>`<option value="${s}">Sector ${s}</option>`).join('');
+}
+
+function updateSizeOptions() {
+  const type = document.getElementById('rate-type').value;
+  const sel = document.getElementById('rate-size');
+  if (type === 'residential') {
+    sel.innerHTML = ['5 Marla','8 Marla','10 Marla','1 Kanal','2 Kanal'].map(s=>`<option>${s}</option>`).join('');
+  } else {
+    sel.innerHTML = ['2 Marla','4 Marla','8 Marla'].map(s=>`<option>${s}</option>`).join('');
+  }
+}
+
+function renderFeatureCheckboxes() {
+  const container = document.getElementById('rate-features-list');
+  if (!container) return;
+  container.innerHTML = featureDefinitions.map(f => `
+    <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 12px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+        <input type="checkbox" id="feat-${f.id}" value="${f.id}" onchange="toggleFeatureInput('${f.id}','${f.field_type}')" style="accent-color:var(--green);width:16px;height:16px;flex-shrink:0;"/>
+        <span style="font-size:13px;font-weight:500;">${f.name}</span>
+      </label>
+      <div id="feat-input-${f.id}" style="display:none;margin-top:8px;">
+        ${f.field_type === 'select' ? 
+          `<select id="feat-val-${f.id}" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;">
+            ${(JSON.parse(f.options||'[]')).map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>` :
+          `<input type="text" id="feat-val-${f.id}" placeholder="Enter value..." style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;"/>`
+        }
+        <div style="font-size:11px;color:var(--green);margin-top:3px;">Premium: ${formatPremiumRules(f.premium_rules)}</div>
+      </div>
+    </div>
   `).join('');
 }
 
-async function saveRate() {
-  const sector = document.getElementById('rate-sector').value.trim();
+function formatPremiumRules(rules) {
+  try {
+    const r = typeof rules === 'string' ? JSON.parse(rules) : rules;
+    return Object.entries(r).map(([k,v])=>`${k}=+${v}%`).join(', ');
+  } catch { return ''; }
+}
+
+function toggleFeatureInput(id, type) {
+  const cb = document.getElementById(`feat-${id}`);
+  const inp = document.getElementById(`feat-input-${id}`);
+  if (inp) inp.style.display = cb.checked && type !== 'boolean' ? 'block' : 'none';
+}
+
+function getSelectedFeatures() {
+  const features = {};
+  featureDefinitions.forEach(f => {
+    const cb = document.getElementById(`feat-${f.id}`);
+    if (cb && cb.checked) {
+      const valEl = document.getElementById(`feat-val-${f.id}`);
+      features[f.name] = valEl ? valEl.value : 'Yes';
+    }
+  });
+  return features;
+}
+
+function resetRateForm() {
+  document.getElementById('rate-sector').value = '';
+  document.getElementById('rate-type').value = 'residential';
+  document.getElementById('rate-size').value = '5 Marla';
+  document.getElementById('rate-plotno').value = '';
+  document.getElementById('rate-min').value = '';
+  document.getElementById('rate-max').value = '';
+  document.getElementById('rate-notes').value = '';
+  document.querySelectorAll('#rate-features-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    const id = cb.id.replace('feat-','');
+    const inp = document.getElementById(`feat-input-${id}`);
+    if (inp) inp.style.display = 'none';
+  });
+  document.getElementById('rate-msg').textContent = '';
+}
+
+function parsePlotRange(str) {
+  if (!str || str.trim() === '') return { from: 1, to: 999999 };
+  const s = str.trim();
+  if (s.includes('-')) {
+    const [a, b] = s.split('-').map(x => parseInt(x.trim()));
+    return { from: a, to: b };
+  }
+  const n = parseInt(s);
+  return { from: n, to: n };
+}
+
+async function saveManualRate() {
+  const sector = document.getElementById('rate-sector').value;
   const plot_type = document.getElementById('rate-type').value;
-  const size = document.getElementById('rate-size').value.trim();
-  const min_price = parseInt(document.getElementById('rate-min').value);
-  const max_price = parseInt(document.getElementById('rate-max').value);
+  const size = document.getElementById('rate-size').value;
+  const plotno = document.getElementById('rate-plotno').value;
+  const minL = parseFloat(document.getElementById('rate-min').value);
+  const maxL = parseFloat(document.getElementById('rate-max').value);
   const notes = document.getElementById('rate-notes').value.trim();
   const msg = document.getElementById('rate-msg');
-  if (!sector||!size||!min_price||!max_price) { msg.style.color='var(--red)'; msg.textContent='Fill all required fields'; return; }
-  const res = await api('/api/plot-rates','POST',{sector,plot_type,size,min_price,max_price,notes});
-  if (res?.success) { msg.style.color='var(--green)'; msg.textContent='✓ Saved!'; loadRates(); setTimeout(()=>msg.textContent='',3000); }
-  else { msg.style.color='var(--red)'; msg.textContent=res?.error||'Failed'; }
+
+  if (!sector || !size || !minL || !maxL) {
+    msg.style.color='var(--red)'; msg.textContent='Fill all required fields'; return;
+  }
+
+  const { from, to } = parsePlotRange(plotno);
+  const features = getSelectedFeatures();
+
+  const res = await api('/api/plot-data', 'POST', {
+    sector, plot_type, size,
+    plot_from: from, plot_to: to,
+    min_price: Math.round(minL * 100000),
+    max_price: Math.round(maxL * 100000),
+    notes, features
+  });
+
+  if (res?.id || res?.success) {
+    msg.style.color='var(--green)'; msg.textContent='✓ Saved!';
+    setTimeout(()=>msg.textContent='', 3000);
+    resetRateForm();
+  } else {
+    msg.style.color='var(--red)'; msg.textContent = res?.error || 'Failed';
+  }
 }
+
+async function loadPlotData() {
+  const sector = document.getElementById('filter-sector')?.value || '';
+  const type = document.getElementById('filter-type')?.value || '';
+  let url = '/api/plot-data';
+  const params = [];
+  if (sector) params.push(`sector=${sector}`);
+  if (type) params.push(`type=${type}`);
+  if (params.length) url += '?' + params.join('&');
+
+  const data = await api(url);
+  const tbody = document.getElementById('plot-data-table');
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><p>No plot data yet. Add rates manually or import from Excel.</p></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map((r,i) => {
+    const feats = typeof r.features === 'string' ? JSON.parse(r.features) : (r.features || {});
+    const featStr = Object.entries(feats).map(([k,v])=>`${k}: ${v}`).join(' · ') || '—';
+    const rangeStr = r.plot_from === r.plot_to ? `#${r.plot_from}` : `#${r.plot_from}–${r.plot_to}`;
+    return `<tr>
+      <td class="td-name">Sector ${r.sector}</td>
+      <td><span class="badge ${r.plot_type==='residential'?'badge-green':'badge-blue'}">${r.plot_type}</span></td>
+      <td>${r.size}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;">${rangeStr}</td>
+      <td style="color:var(--green);font-weight:600;">Rs ${(r.min_price/100000).toFixed(0)}L</td>
+      <td style="color:var(--green);font-weight:600;">Rs ${(r.max_price/100000).toFixed(0)}L</td>
+      <td style="font-size:12px;color:var(--gray-500);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${featStr}">${featStr}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deletePlotData('${r.id}')">Delete</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deletePlotData(id) {
+  if (!confirm('Delete this plot rate entry?')) return;
+  const res = await api(`/api/plot-data/${id}`, 'DELETE');
+  if (res?.success) loadPlotData();
+  else alert(res?.error || 'Failed');
+}
+
+// ── EXCEL IMPORT ─────────────────────────────────────────────────────────────
+function downloadTemplate() {
+  window.open('/api/plot-template', '_blank');
+}
+
+function handleExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/plot-data/preview', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    importData = data.rows;
+    showImportPreview(data.headers, data.rows);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportPreview(headers, rows) {
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('import-count').textContent = `${rows.length} rows detected`;
+  const headerRow = document.getElementById('import-preview-headers');
+  headerRow.innerHTML = headers.map(h=>`<th>${h}</th>`).join('');
+  const tbody = document.getElementById('import-preview-body');
+  tbody.innerHTML = rows.slice(0,5).map(row=>
+    `<tr>${headers.map(h=>`<td style="font-size:12px;">${row[h]??''}</td>`).join('')}</tr>`
+  ).join('') + (rows.length > 5 ? `<tr><td colspan="${headers.length}" style="text-align:center;color:var(--gray-400);font-size:12px;">...and ${rows.length-5} more rows</td></tr>` : '');
+}
+
+function cancelImport() {
+  importData = [];
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('excel-upload').value = '';
+}
+
+async function confirmImport() {
+  const msg = document.getElementById('import-msg');
+  msg.style.color = 'var(--gray-500)';
+  msg.textContent = 'Importing...';
+  const res = await api('/api/plot-data/import', 'POST', { rows: importData });
+  if (res?.imported) {
+    msg.style.color = 'var(--green)';
+    msg.textContent = `✓ ${res.imported} rows imported!`;
+    cancelImport();
+    switchRateTab('view', null);
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = res?.error || 'Import failed';
+  }
+}
+
+// ── CHARGES TAB ───────────────────────────────────────────────────────────────
+async function loadChargesTab() {
+  const [charges, features] = await Promise.all([
+    api('/api/plot-charges'),
+    api('/api/feature-definitions')
+  ]);
+
+  const chargesEl = document.getElementById('charges-list-tab');
+  chargesEl.innerHTML = (charges||[]).map(c=>`
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px;">
+      <div>
+        <div style="font-weight:500;">${c.charge_name}</div>
+        <div style="font-size:11px;color:var(--gray-400);">${c.notes||''}</div>
+      </div>
+      <div style="text-align:right;white-space:nowrap;margin-left:12px;font-weight:600;color:var(--green);">
+        ${c.calculation_base==='fixed' ? fmt(c.amount) : `${c.percentage}% of value`}
+      </div>
+    </div>
+  `).join('') || '<p style="color:var(--gray-400);font-size:13px;">No charges defined</p>';
+
+  const featEl = document.getElementById('feature-definitions-list');
+  featEl.innerHTML = (features||[]).map(f=>{
+    let rules = '';
+    try { rules = Object.entries(typeof f.premium_rules==='string'?JSON.parse(f.premium_rules):f.premium_rules).map(([k,v])=>`${k} → +${v}%`).join(', '); } catch{}
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--gray-100);">
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="font-weight:500;">${f.name}</span>
+        <span class="badge badge-green" style="font-size:11px;">${f.field_type}</span>
+      </div>
+      <div style="font-size:11px;color:var(--green);margin-top:2px;">${rules}</div>
+    </div>`;
+  }).join('') || '<p style="color:var(--gray-400);font-size:13px;">No features defined</p>';
+}
+
+// Legacy function kept for dashboard
+async function loadRates() {
+  await loadFeatureDefinitions();
+  populateSectorDropdowns();
+  renderFeatureCheckboxes();
+}
+async function saveRate() {}
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 async function loadSettings() {
@@ -1169,6 +1548,358 @@ function renderChargesReference() {
       </div>
     </div>
   `).join('');
+}
+
+
+// ── PLOT RATES V2 ─────────────────────────────────────────────────────────────
+let featureDefsData = [];
+let featurePremiumsData = [];
+let roadPremiumsData = [];
+let parsedExcelData = [];
+
+const SECTORS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W1','W2'];
+const SIZES_BY_SECTOR = {
+  'P': ['5 Marla'], 'T': ['5 Marla'],
+  'V': ['5 Marla', '8 Marla'],
+  'B': ['10 Marla'], 'U': ['10 Marla'],
+};
+const DEFAULT_SIZES = { residential: ['1 Kanal'], commercial: ['2 Marla', '4 Marla', '8 Marla'] };
+
+async function initRatesPage() {
+  const [defs, fps, rps] = await Promise.all([
+    api('/api/plot-feature-defs'),
+    api('/api/feature-premiums'),
+    api('/api/road-premiums'),
+  ]);
+  featureDefsData = defs || [];
+  featurePremiumsData = fps || [];
+  roadPremiumsData = rps || [];
+
+  // Populate sector dropdowns
+  ['re-sector', 'filter-sector'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const opts = id === 'filter-sector' ? '<option value="">All Sectors</option>' : '<option value="">Select sector...</option>';
+    el.innerHTML = opts + SECTORS.map(s => `<option value="${s}">Sector ${s}</option>`).join('');
+  });
+
+  // Size update on sector/type change
+  document.getElementById('re-sector').addEventListener('change', updateReSizes);
+  document.getElementById('re-type').addEventListener('change', updateReSizes);
+  document.getElementById('re-min').addEventListener('input', e => {
+    document.getElementById('re-min-display').textContent = e.target.value ? 'Rs ' + fmt(parseFloat(e.target.value) * 100000) : '';
+  });
+  document.getElementById('re-max').addEventListener('input', e => {
+    document.getElementById('re-max-display').textContent = e.target.value ? 'Rs ' + fmt(parseFloat(e.target.value) * 100000) : '';
+  });
+
+  renderFeatureInputs();
+  renderPremiumsEditor();
+  loadRatesV2();
+}
+
+function updateReSizes() {
+  const sector = document.getElementById('re-sector').value;
+  const type = document.getElementById('re-type').value;
+  const sel = document.getElementById('re-size');
+  let sizes = [];
+  if (type === 'commercial') {
+    sizes = DEFAULT_SIZES.commercial;
+  } else {
+    sizes = SIZES_BY_SECTOR[sector] || DEFAULT_SIZES.residential;
+  }
+  sel.innerHTML = '<option value="">Select size...</option>' + sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function renderFeatureInputs() {
+  const grid = document.getElementById('re-features-grid');
+  if (!grid) return;
+  grid.innerHTML = featureDefsData.map(f => `
+    <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 12px;">
+      ${f.input_type === 'checkbox' ? `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="rf-${f.key}" data-key="${f.key}" data-type="checkbox" style="accent-color:var(--green);width:16px;height:16px;"/>
+          <div>
+            <div style="font-size:13px;font-weight:500;">${f.label}</div>
+            <div style="font-size:11px;color:var(--gray-400);">${f.description||''}</div>
+          </div>
+        </label>
+      ` : f.input_type === 'select' ? `
+        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">${f.label}</label>
+        <select id="rf-${f.key}" data-key="${f.key}" data-type="select" style="width:100%;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;">
+          <option value="">Not applicable</option>
+          ${(f.options||'').split(',').map(o => `<option value="${o.trim()}">${o.trim()}</option>`).join('')}
+        </select>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">${f.description||''}</div>
+      ` : `
+        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">${f.label}</label>
+        <input type="text" id="rf-${f.key}" data-key="${f.key}" data-type="text" placeholder="${f.description||''}" style="width:100%;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;"/>
+      `}
+    </div>
+  `).join('');
+}
+
+function getFeatureValues() {
+  const features = {};
+  featureDefsData.forEach(f => {
+    const el = document.getElementById('rf-' + f.key);
+    if (!el) return;
+    if (f.input_type === 'checkbox') {
+      if (el.checked) features[f.key] = true;
+    } else if (f.input_type === 'select') {
+      if (el.value) features[f.key] = el.value;
+    } else {
+      if (el.value.trim()) features[f.key] = el.value.trim();
+    }
+  });
+  return features;
+}
+
+async function saveRateEntry() {
+  const sector = document.getElementById('re-sector').value;
+  const plot_type = document.getElementById('re-type').value;
+  const size = document.getElementById('re-size').value;
+  const plot_no_from = parseInt(document.getElementById('re-from').value);
+  const plot_no_to = parseInt(document.getElementById('re-to').value);
+  const min_lakh = parseFloat(document.getElementById('re-min').value);
+  const max_lakh = parseFloat(document.getElementById('re-max').value);
+  const notes = document.getElementById('re-notes').value.trim();
+  const msg = document.getElementById('re-msg');
+
+  if (!sector || !size || !plot_no_from || !plot_no_to || !min_lakh || !max_lakh) {
+    msg.style.color = 'var(--red)'; msg.textContent = 'Fill all required fields'; return;
+  }
+  if (plot_no_from > plot_no_to) {
+    msg.style.color = 'var(--red)'; msg.textContent = 'Plot From must be ≤ Plot To'; return;
+  }
+
+  const features = getFeatureValues();
+  const res = await api('/api/plot-rates-v2', 'POST', {
+    sector, plot_type, size,
+    plot_no_from, plot_no_to,
+    min_price: Math.round(min_lakh * 100000),
+    max_price: Math.round(max_lakh * 100000),
+    features, notes
+  });
+
+  if (res?.id || res?.success) {
+    msg.style.color = 'var(--green)'; msg.textContent = '✓ Saved!';
+    setTimeout(() => msg.textContent = '', 3000);
+    loadRatesV2();
+  } else {
+    msg.style.color = 'var(--red)'; msg.textContent = res?.error || 'Failed';
+  }
+}
+
+function resetRateEntry() {
+  ['re-sector','re-type','re-size','re-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['re-from','re-to','re-min','re-max'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['re-min-display','re-max-display','re-msg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+  featureDefsData.forEach(f => {
+    const el = document.getElementById('rf-' + f.key);
+    if (!el) return;
+    if (f.input_type === 'checkbox') el.checked = false;
+    else el.value = '';
+  });
+}
+
+async function loadRatesV2() {
+  const sector = document.getElementById('filter-sector')?.value || '';
+  const type = document.getElementById('filter-type')?.value || '';
+  let url = '/api/plot-rates-v2';
+  const params = [];
+  if (sector) params.push('sector=' + sector);
+  if (type) params.push('type=' + type);
+  if (params.length) url += '?' + params.join('&');
+
+  const rates = await api(url);
+  const tbody = document.getElementById('rates-v2-body');
+  if (!rates?.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty"><p>No rates added yet</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = rates.map(r => {
+    const feats = Object.entries(r.features || {}).map(([k,v]) => {
+      const def = featureDefsData.find(d => d.key === k);
+      return `<span class="badge badge-blue" style="font-size:10px;">${def?.label||k}${v !== true ? ': '+v : ''}</span>`;
+    }).join(' ');
+    return `<tr>
+      <td class="td-name">Sector ${r.sector}</td>
+      <td><span class="badge ${r.plot_type==='residential'?'badge-green':'badge-blue'}">${r.plot_type}</span></td>
+      <td>${r.size}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;">${r.plot_no_from === r.plot_no_to ? r.plot_no_from : r.plot_no_from+'–'+r.plot_no_to}</td>
+      <td style="color:var(--green);font-weight:600;">Rs ${r.min_price/100000}L</td>
+      <td style="color:var(--green);font-weight:600;">Rs ${r.max_price/100000}L</td>
+      <td style="max-width:200px;">${feats || '—'}</td>
+      <td style="font-size:12px;color:var(--gray-500);">${timeAgo(r.updated_at)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRate('${r.id}')">Delete</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteRate(id) {
+  if (!confirm('Delete this rate entry?')) return;
+  const res = await api('/api/plot-rates-v2/' + id, 'DELETE');
+  if (res?.success) loadRatesV2();
+  else alert(res?.error || 'Failed');
+}
+
+// ── EXCEL IMPORT ──────────────────────────────────────────────────────────────
+async function handleExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs');
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+  if (rows.length < 2) { alert('File appears empty'); return; }
+
+  const headers = rows[0].map(h => String(h).trim());
+  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+  // Preview
+  document.getElementById('excel-preview').style.display = 'block';
+  document.getElementById('preview-count').textContent = dataRows.length;
+  document.getElementById('preview-headers').innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+  document.getElementById('preview-body').innerHTML = dataRows.slice(0, 5).map(r =>
+    '<tr>' + r.map(c => `<td style="font-size:12px;">${c}</td>`).join('') + '</tr>'
+  ).join('') + (dataRows.length > 5 ? `<tr><td colspan="${headers.length}" style="font-size:12px;color:var(--gray-400);">... and ${dataRows.length-5} more rows</td></tr>` : '');
+
+  // Parse rows
+  parsedExcelData = dataRows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = String(row[i] || '').trim());
+    return obj;
+  });
+}
+
+function clearExcelPreview() {
+  document.getElementById('excel-preview').style.display = 'none';
+  document.getElementById('excel-file').value = '';
+  parsedExcelData = [];
+}
+
+async function importExcelData() {
+  if (!parsedExcelData.length) return;
+  const msg = document.getElementById('import-msg');
+  msg.style.color = 'var(--gray-500)'; msg.textContent = 'Importing...';
+
+  let success = 0, failed = 0;
+  for (const row of parsedExcelData) {
+    try {
+      const sector = row['Sector'] || row['sector'] || '';
+      const plot_type = (row['Plot Type'] || row['plot_type'] || 'residential').toLowerCase();
+      const size = row['Size'] || row['size'] || '';
+      const plotNoRaw = String(row['Plot Number'] || row['plot_number'] || row['Plot No'] || '1');
+      const minLakh = parseFloat(row['Min Price'] || row['min_price'] || 0);
+      const maxLakh = parseFloat(row['Max Price'] || row['max_price'] || 0);
+
+      // Parse plot range
+      let plot_no_from, plot_no_to;
+      if (plotNoRaw.includes('-')) {
+        const parts = plotNoRaw.split('-');
+        plot_no_from = parseInt(parts[0]);
+        plot_no_to = parseInt(parts[1]);
+      } else {
+        plot_no_from = plot_no_to = parseInt(plotNoRaw);
+      }
+
+      // Extract features — any column after Max Price
+      const knownCols = ['Sector','Plot Type','Plot Number','Plot No','Size','Min Price','Max Price','sector','plot_type','plot_number','size','min_price','max_price'];
+      const features = {};
+      Object.entries(row).forEach(([k, v]) => {
+        if (knownCols.includes(k) || !v || v === 'No' || v === 'no' || v === 'NO') return;
+        const key = k.toLowerCase().replace(/\s+/g, '_');
+        features[key] = v === 'Yes' || v === 'yes' || v === 'YES' ? true : v;
+      });
+
+      const res = await api('/api/plot-rates-v2', 'POST', {
+        sector, plot_type, size, plot_no_from, plot_no_to,
+        min_price: Math.round(minLakh * 100000),
+        max_price: Math.round(maxLakh * 100000),
+        features, notes: ''
+      });
+      if (res?.id || res?.success) success++; else failed++;
+    } catch(e) { failed++; }
+  }
+
+  msg.style.color = success > 0 ? 'var(--green)' : 'var(--red)';
+  msg.textContent = `✓ ${success} imported${failed > 0 ? `, ${failed} failed` : ''}`;
+  if (success > 0) loadRatesV2();
+}
+
+// ── PREMIUMS EDITOR ───────────────────────────────────────────────────────────
+function renderPremiumsEditor() {
+  const fpList = document.getElementById('feature-premiums-list');
+  const rpList = document.getElementById('road-premiums-list');
+  if (!fpList || !rpList) return;
+
+  fpList.innerHTML = featureDefsData.filter(f => f.key !== 'near_road').map(f => {
+    const current = featurePremiumsData.find(p => p.feature_key === f.key);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
+      <div>
+        <div style="font-size:13px;font-weight:500;">${f.label}</div>
+        <div style="font-size:11px;color:var(--gray-400);">${f.description||''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="fp-${f.key}" value="${current?.premium_percent||0}" min="0" max="100" step="0.5" style="width:70px;padding:5px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;text-align:right;"/>
+        <span style="font-size:13px;color:var(--gray-500);">%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  rpList.innerHTML = roadPremiumsData.map(r => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
+      <div>
+        <div style="font-size:13px;font-weight:500;">${r.road_width} Road</div>
+        <div style="font-size:11px;color:var(--gray-400);">${r.description||''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="rp-${r.road_width}" value="${r.premium_percent}" min="0" max="100" step="0.5" style="width:70px;padding:5px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;text-align:right;"/>
+        <span style="font-size:13px;color:var(--gray-500);">%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveFeaturePremiums() {
+  const msg = document.getElementById('fp-msg');
+  for (const f of featureDefsData.filter(f => f.key !== 'near_road')) {
+    const val = parseFloat(document.getElementById('fp-' + f.key)?.value || 0);
+    await api('/api/feature-premiums', 'POST', { feature_key: f.key, premium_percent: val });
+  }
+  msg.textContent = '✓ Saved!'; setTimeout(() => msg.textContent='', 3000);
+}
+
+async function saveRoadPremiums() {
+  const msg = document.getElementById('rp-msg');
+  for (const r of roadPremiumsData) {
+    const val = parseFloat(document.getElementById('rp-' + r.road_width)?.value || 0);
+    await api('/api/road-premiums', 'POST', { road_width: r.road_width, premium_percent: val });
+  }
+  msg.textContent = '✓ Saved!'; setTimeout(() => msg.textContent='', 3000);
+}
+
+function switchRatesTab(tab, el) {
+  ['entry','import','view','premiums'].forEach(t => {
+    const el2 = document.getElementById('rates-tab-'+t);
+    if (el2) el2.style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#page-rates .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'view') loadRatesV2();
+  if (tab === 'premiums') renderPremiumsEditor();
 }
 
 function fmt(n) {

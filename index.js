@@ -524,3 +524,228 @@ app.get("/api/plot-charges", auth.requireAuth(), async (req, res) => {
     res.json(data || []);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// ─── Feature Definitions ──────────────────────────────────────────────────────
+app.get("/api/feature-definitions", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { data } = await supa.from("feature_definitions").select("*").order("sort_order");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Plot Data CRUD ───────────────────────────────────────────────────────────
+app.get("/api/plot-data", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    let query = supa.from("plot_data").select("*").order("sector").order("plot_from");
+    if (req.query.sector) query = query.eq("sector", req.query.sector);
+    if (req.query.type) query = query.eq("plot_type", req.query.type);
+    const { data } = await query;
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/plot-data", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { sector, plot_type, size, plot_from, plot_to, min_price, max_price, notes, features } = req.body;
+    const { data, error } = await supa.from("plot_data")
+      .insert({ sector, plot_type, size, plot_from, plot_to, min_price, max_price, notes, features: features || {}, uploaded_by: req.user.id })
+      .select().single();
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.delete("/api/plot-data/:id", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    await supa.from("plot_data").delete().eq("id", req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Excel Template Download ──────────────────────────────────────────────────
+app.get("/api/plot-template", auth.requireAuth(), (req, res) => {
+  const templatePath = path.join(__dirname, "Bodla_Plot_Rates_Template.xlsx");
+  if (require("fs").existsSync(templatePath)) {
+    res.download(templatePath, "Bodla_Plot_Rates_Template.xlsx");
+  } else {
+    res.status(404).json({ error: "Template not found" });
+  }
+});
+
+// ─── Excel Import Preview ─────────────────────────────────────────────────────
+app.post("/api/plot-data/preview", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const multer = require("multer");
+    const XLSX = require("xlsx");
+    const upload = multer({ storage: multer.memoryStorage() }).single("file");
+    upload(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      // Row 2 is headers (row 1 is group headers)
+      const headers = raw[1].filter(Boolean);
+      const rows = raw.slice(2).filter(r => r.some(c => c !== undefined && c !== '')).map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? String(row[i]).trim() : ''; });
+        return obj;
+      });
+      res.json({ headers, rows });
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Excel Import Confirm ─────────────────────────────────────────────────────
+app.post("/api/plot-data/import", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const ws2 = require("ws");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: ws2 } });
+    const { rows } = req.body;
+    const FIXED_COLS = ['Sector','Plot Type','Plot Number','Size','Notes','Min Price','Max Price'];
+    let imported = 0;
+    for (const row of rows) {
+      const plotStr = row['Plot Number'] || '';
+      let plot_from = 1, plot_to = 999999;
+      if (plotStr.includes('-')) {
+        const [a, b] = plotStr.split('-').map(x => parseInt(x.trim()));
+        plot_from = a; plot_to = b;
+      } else if (plotStr) {
+        plot_from = plot_to = parseInt(plotStr);
+      }
+      // Dynamic features — any col not in FIXED_COLS
+      const features = {};
+      Object.keys(row).forEach(k => {
+        if (!FIXED_COLS.includes(k) && row[k] && row[k].toLowerCase() !== 'no' && row[k] !== '') {
+          features[k] = row[k];
+        }
+      });
+      const minP = parseFloat(row['Min Price'] || 0) * 100000;
+      const maxP = parseFloat(row['Max Price'] || 0) * 100000;
+      if (!row['Sector'] || !minP) continue;
+      await supa.from("plot_data").insert({
+        sector: row['Sector'],
+        plot_type: (row['Plot Type'] || 'residential').toLowerCase(),
+        size: row['Size'] || '',
+        plot_from, plot_to,
+        min_price: Math.round(minP),
+        max_price: Math.round(maxP),
+        notes: row['Notes'] || null,
+        features,
+        uploaded_by: req.user.id
+      });
+      imported++;
+    }
+    res.json({ imported });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Plot Rates V2 ────────────────────────────────────────────────────────────
+app.get("/api/plot-rates-v2", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    let query = supa.from("plot_rates_v2").select("*").order("sector").order("plot_no_from");
+    if (req.query.sector) query = query.eq("sector", req.query.sector);
+    if (req.query.type) query = query.eq("plot_type", req.query.type);
+    const { data } = await query;
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/plot-rates-v2", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { sector, plot_type, size, plot_no_from, plot_no_to, min_price, max_price, features, notes } = req.body;
+    const { data, error } = await supa.from("plot_rates_v2").insert({ sector, plot_type, size, plot_no_from, plot_no_to, min_price, max_price, features: features||{}, notes, updated_by: req.user.id }).select().single();
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.delete("/api/plot-rates-v2/:id", auth.requireAuth(["admin", "manager"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { error } = await supa.from("plot_rates_v2").delete().eq("id", req.params.id);
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Feature Defs ─────────────────────────────────────────────────────────────
+app.get("/api/plot-feature-defs", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { data } = await supa.from("plot_feature_defs").select("*").order("sort_order");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Feature Premiums ─────────────────────────────────────────────────────────
+app.get("/api/feature-premiums", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { data } = await supa.from("feature_premiums").select("*");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/feature-premiums", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { feature_key, premium_percent } = req.body;
+    await supa.from("feature_premiums").upsert({ feature_key, premium_percent, updated_by: req.user.id, updated_at: new Date().toISOString() }, { onConflict: "feature_key" });
+    res.json({ success: true });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Road Premiums ────────────────────────────────────────────────────────────
+app.get("/api/road-premiums", auth.requireAuth(), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { data } = await supa.from("road_premiums").select("*").order("road_width");
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/road-premiums", auth.requireAuth(["admin"]), async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { road_width, premium_percent } = req.body;
+    await supa.from("road_premiums").upsert({ road_width, premium_percent, updated_by: req.user.id, updated_at: new Date().toISOString() }, { onConflict: "road_width" });
+    res.json({ success: true });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ─── Plot Lookup (for bot) ────────────────────────────────────────────────────
+app.get("/api/plot-lookup", async (req, res) => {
+  try {
+    const { createClient: sc } = require("@supabase/supabase-js");
+    const supa = sc(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { realtime: { transport: require("ws") } });
+    const { sector, plot_no, plot_type } = req.query;
+    let query = supa.from("plot_rates_v2").select("*").eq("sector", sector).lte("plot_no_from", parseInt(plot_no)).gte("plot_no_to", parseInt(plot_no));
+    if (plot_type) query = query.eq("plot_type", plot_type);
+    const { data } = await query;
+    res.json(data || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
