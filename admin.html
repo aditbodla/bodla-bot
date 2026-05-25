@@ -347,14 +347,14 @@ tr:hover td{background:var(--gray-50);}
 
         <!-- Tabs -->
         <div class="tabs">
-          <button class="tab active" onclick="switchRateTab('manual',this)">Manual Entry</button>
-          <button class="tab" onclick="switchRateTab('import',this)">Excel Import</button>
-          <button class="tab" onclick="switchRateTab('view',this)">View All Rates</button>
-          <button class="tab" onclick="switchRateTab('charges',this)">Charges & Features</button>
+          <button class="tab active" onclick="switchRatesTab('entry',this)">Manual Entry</button>
+          <button class="tab" onclick="switchRatesTab('import',this)">Excel Import</button>
+          <button class="tab" onclick="switchRatesTab('view',this)">View All Rates</button>
+          <button class="tab" onclick="switchRatesTab('premiums',this)">Charges & Features</button>
         </div>
 
         <!-- Manual Entry Tab -->
-        <div id="rate-tab-manual">
+        <div id="rates-tab-entry">
           <div class="card">
             <div class="card-header">
               <span class="card-title">Add / Update Plot Rate</span>
@@ -413,7 +413,7 @@ tr:hover td{background:var(--gray-50);}
         </div>
 
         <!-- Excel Import Tab -->
-        <div id="rate-tab-import" style="display:none;">
+        <div id="rates-tab-import" style="display:none;">
           <div class="card">
             <div class="card-header"><span class="card-title">Import Plot Rates from Excel</span></div>
             <div class="card-body">
@@ -449,7 +449,7 @@ tr:hover td{background:var(--gray-50);}
         </div>
 
         <!-- View All Rates Tab -->
-        <div id="rate-tab-view" style="display:none;">
+        <div id="rates-tab-view" style="display:none;">
           <div class="card">
             <div class="card-header">
               <span class="card-title">All Plot Rates</span>
@@ -475,7 +475,7 @@ tr:hover td{background:var(--gray-50);}
         </div>
 
         <!-- Charges & Features Tab -->
-        <div id="rate-tab-charges" style="display:none;">
+        <div id="rates-tab-premiums" style="display:none;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <div class="card">
               <div class="card-header"><span class="card-title">Feature Definitions & Premiums</span></div>
