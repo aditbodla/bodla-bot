@@ -164,6 +164,7 @@ tr:hover td{background:var(--gray-50);}
   .stats-grid{grid-template-columns:1fr 1fr;}
 }
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -423,11 +424,11 @@ tr:hover td{background:var(--gray-50);}
                 <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">⬇ Download Excel Template</button>
               </div>
 
-              <div style="border:2px dashed var(--gray-300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;" onclick="document.getElementById('excel-upload').click()" id="upload-zone">
+              <div style="border:2px dashed var(--gray-300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;" onclick="document.getElementById('excel-file').click()" id="upload-zone">
                 <div style="font-size:32px;margin-bottom:8px;">📊</div>
                 <p style="font-weight:600;color:var(--gray-700);margin-bottom:4px;">Click to upload Excel file</p>
                 <p style="font-size:12px;color:var(--gray-400);">.xlsx files only · Max 5MB</p>
-                <input type="file" id="excel-upload" accept=".xlsx" style="display:none;" onchange="handleExcelUpload(this)"/>
+                <input type="file" id="excel-file" accept=".xlsx" style="display:none;" onchange="handleExcelFile(this)"/>
               </div>
 
               <div id="import-preview" style="display:none;margin-top:20px;">
@@ -1148,43 +1149,61 @@ async function deleteRate(id) {
 }
 
 // ── EXCEL IMPORT ──────────────────────────────────────────────────────────────
+function downloadSampleTemplate() {
+  const headers = ['Sector','Plot Type','Plot Number','Size','Min Price','Max Price','Corner','Park Facing','Road Width','Extra Land','Main Boulevard','Near Mosque'];
+  const sample = [
+    ['V','Residential','5789','5 Marla','18','25','Yes','No','60ft','No','No','No'],
+    ['V','Residential','5790-5795','5 Marla','20','28','No','Yes','80ft','No','No','Yes'],
+    ['K','Residential','101','1 Kanal','70','100','Yes','No','120ft','Yes','No','No'],
+    ['P','Residential','1-50','5 Marla','18','22','No','No','60ft','No','No','No'],
+    ['B','Commercial','201-210','4 Marla','90','150','Yes','No','300ft','No','Yes','No'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Plot Rates');
+  XLSX.writeFile(wb, 'Bodla_Plot_Rates_Template.xlsx');
+}
+
 async function handleExcelFile(input) {
   const file = input.files[0];
   if (!file) return;
-  const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs');
-  const data = await file.arrayBuffer();
-  const wb = XLSX.read(data);
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-  if (rows.length < 2) { alert('File appears empty'); return; }
+    if (rows.length < 2) { alert('File appears empty or has only headers'); return; }
 
-  const headers = rows[0].map(h => String(h).trim());
-  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+    const headers = rows[0].map(h => String(h).trim());
+    const dataRows = rows.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
 
-  // Preview
-  document.getElementById('excel-preview').style.display = 'block';
-  document.getElementById('preview-count').textContent = dataRows.length;
-  document.getElementById('preview-headers').innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
-  document.getElementById('preview-body').innerHTML = dataRows.slice(0, 5).map(r =>
-    '<tr>' + r.map(c => `<td style="font-size:12px;">${c}</td>`).join('') + '</tr>'
-  ).join('') + (dataRows.length > 5 ? `<tr><td colspan="${headers.length}" style="font-size:12px;color:var(--gray-400);">... and ${dataRows.length-5} more rows</td></tr>` : '');
+    // Show preview using correct IDs
+    document.getElementById('import-preview').style.display = 'block';
+    document.getElementById('import-count').textContent = dataRows.length + ' rows found';
+    document.getElementById('import-preview-headers').innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+    document.getElementById('import-preview-body').innerHTML = dataRows.slice(0, 5).map(r =>
+      '<tr>' + headers.map((h,i) => `<td style="font-size:12px;">${r[i]||''}</td>`).join('') + '</tr>'
+    ).join('') + (dataRows.length > 5 ? `<tr><td colspan="${headers.length}" style="font-size:12px;color:var(--gray-400);padding:8px;">... and ${dataRows.length-5} more rows</td></tr>` : '');
 
-  // Parse rows
-  parsedExcelData = dataRows.map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = String(row[i] || '').trim());
-    return obj;
-  });
+    // Parse rows
+    parsedExcelData = dataRows.map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = String(row[i] || '').trim());
+      return obj;
+    });
+  } catch(e) {
+    alert('Error reading file: ' + e.message);
+  }
 }
 
-function clearExcelPreview() {
-  document.getElementById('excel-preview').style.display = 'none';
+function cancelImport() {
+  document.getElementById('import-preview').style.display = 'none';
   document.getElementById('excel-file').value = '';
   parsedExcelData = [];
 }
 
-async function importExcelData() {
+async function confirmImport() {
   if (!parsedExcelData.length) return;
   const msg = document.getElementById('import-msg');
   msg.style.color = 'var(--gray-500)'; msg.textContent = 'Importing...';
